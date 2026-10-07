@@ -1,0 +1,675 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  AI Self-Healing Backend Pipeline.
+  Sentry + Bedrock monitoring trigger SNS -> EventBridge Pipe ->
+  Step Functions (INGEST -> INVESTIGATE -> FIX -> TEST -> PR -> NOTIFY).
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, production]
+
+  EcsClusterArn:
+    Type: String
+
+  SubnetId:
+    Type: String
+    Description: Public subnet for Fargate tasks (requires internet for GitHub + Bedrock).
+
+  SecurityGroupId:
+    Type: String
+
+  GithubTokenSecretArn:
+    Type: String
+
+  GithubRepoOwner:
+    Type: String
+    Description: GitHub organization or username that owns the repository to heal.
+    Type: String
+    Default: YOUR-GITHUB-ORG
+
+  GithubRepoName:
+    Type: String
+    Default: your-repo
+
+  GithubBaseBranch:
+    Type: String
+    Default: develop
+
+  SlackWebhookUrl:
+    Type: String
+    NoEcho: true
+
+  SentryAuthTokenSecretArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN for Sentry auth token. Fetched at runtime, never stored plaintext.
+
+  SentryWebhookSecretArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN for Sentry webhook HMAC secret. Fetched at runtime.
+
+  BedrockModelId:
+    Type: String
+    Default: us.anthropic.claude-3-5-sonnet-20241022-v2:0
+
+  BedrockRegion:
+    Type: String
+    Default: us-east-2
+
+  HealerImageUri:
+    Type: String
+    Description: ECR URI for the healer Fargate task image.
+
+Resources:
+  AuditBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-${Environment}-healer-audit
+      LifecycleConfiguration:
+        Rules:
+          - Id: Expire90Days
+            Status: Enabled
+            ExpirationInDays: 90
+
+  RateLimitTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${ProjectName}-${Environment}-healer-rate-limit
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  HealerTriggerTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${ProjectName}-${Environment}-healer-trigger
+
+  # EventBridge Pipes only supports SQS as source, not SNS directly.
+  # Pattern: SNS → SQS → EventBridge Pipe → Step Functions.
+  HealerTriggerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${ProjectName}-${Environment}-healer-trigger
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 86400
+
+  HealerTriggerQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref HealerTriggerQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt HealerTriggerQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref HealerTriggerTopic
+
+  HealerTriggerSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref HealerTriggerTopic
+      Protocol: sqs
+      Endpoint: !GetAtt HealerTriggerQueue.Arn
+
+  HealerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /${ProjectName}/${Environment}/healer
+      RetentionInDays: 30
+
+  # --- Per-component IAM roles (replaces the single HealerExecutionRole) ---
+
+  HealerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-${Environment}-healer-lambda
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: HealerLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-healer-audit/*
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem]
+                Resource: !GetAtt RateLimitTable.Arn
+              - Effect: Allow
+                Action: [sns:Publish]
+                Resource: !Ref HealerTriggerTopic
+              - Effect: Allow
+                Action: [logs:FilterLogEvents]
+                Resource: "*"
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Ref GithubTokenSecretArn
+
+  HealerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-${Environment}-healer-task
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: HealerTaskPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [bedrock:InvokeModel]
+                Resource: "*"
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-healer-audit/*
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Ref GithubTokenSecretArn
+              - Effect: Allow
+                Action: [logs:FilterLogEvents]
+                Resource: "*"
+
+  HealerTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-${Environment}-healer-task-execution
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: HealerTaskExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Ref GithubTokenSecretArn
+
+  HealerStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-${Environment}-healer-state-machine
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: HealerStateMachinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [lambda:InvokeFunction]
+                Resource:
+                  - !GetAtt StageIngestFunction.Arn
+                  - !GetAtt StagePRFunction.Arn
+                  - !GetAtt StageNotifyFunction.Arn
+              - Effect: Allow
+                Action: [ecs:RunTask, ecs:DescribeTasks]
+                Resource:
+                  - !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${ProjectName}-${Environment}-healer-investigate:*
+                  - !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${ProjectName}-${Environment}-healer-fix:*
+                  - !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${ProjectName}-${Environment}-healer-test:*
+              - Effect: Allow
+                Action: [iam:PassRole]
+                Resource:
+                  - !GetAtt HealerTaskRole.Arn
+                  - !GetAtt HealerTaskExecutionRole.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogDelivery
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: "*"
+              # Step Functions .sync:2 integration auto-creates a managed EventBridge
+              # rule (StepFunctionsGetEventsForECSTaskRule) to receive ECS
+              # task-stopped events. Without these the state machine cannot be created.
+              - Effect: Allow
+                Action:
+                  - events:PutTargets
+                  - events:PutRule
+                  - events:DescribeRule
+                  - events:DeleteRule
+                  - events:RemoveTargets
+                Resource: !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule"
+
+  HealerPipeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-${Environment}-healer-pipe
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: pipes.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: HealerPipePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [states:StartExecution]
+                Resource: !Ref HealerStateMachine
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt HealerTriggerQueue.Arn
+
+  IngestApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub ${ProjectName}-${Environment}-healer-ingest
+
+  IngestApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref IngestApiGateway
+      ParentId: !GetAtt IngestApiGateway.RootResourceId
+      PathPart: webhook
+
+  IngestApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref IngestApiGateway
+      ResourceId: !Ref IngestApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestFunction.Arn}/invocations
+
+  IngestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: IngestApiMethod
+    Properties:
+      RestApiId: !Ref IngestApiGateway
+      StageName: !Ref Environment
+
+  IngestFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-healer-ingest
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt HealerLambdaRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          HEALER_SNS_TOPIC_ARN: !Ref HealerTriggerTopic
+          RATE_LIMIT_TABLE: !Ref RateLimitTable
+          ENVIRONMENT: !Ref Environment
+          # ARN — secret fetched at invocation time to avoid plaintext in Lambda config
+          SENTRY_WEBHOOK_SECRET_ARN: !Ref SentryWebhookSecretArn
+      Code:
+        S3Bucket: !Sub ${ProjectName}-${Environment}-lambda-zips-${AWS::AccountId}
+        S3Key: healer/lambdas/ingest.zip
+
+  IngestFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IngestFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+
+  StageIngestFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-healer-stage-ingest
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt HealerLambdaRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          SENTRY_AUTH_TOKEN_SECRET_ARN: !Ref SentryAuthTokenSecretArn
+          HEALER_AUDIT_BUCKET: !Ref AuditBucket
+      Code:
+        S3Bucket: !Sub ${ProjectName}-${Environment}-lambda-zips-${AWS::AccountId}
+        S3Key: healer/lambdas/stage-ingest.zip
+
+  InvestigateTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ProjectName}-${Environment}-healer-investigate
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "1024"
+      Memory: "2048"
+      TaskRoleArn: !GetAtt HealerTaskRole.Arn
+      ExecutionRoleArn: !GetAtt HealerTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: healer-investigate
+          Image: !Ref HealerImageUri
+          Command: ["node", "tasks/investigate/run.js"]
+          Essential: true
+          Environment:
+            - { Name: BEDROCK_MODEL_ID, Value: !Ref BedrockModelId }
+            - { Name: BEDROCK_REGION, Value: !Ref BedrockRegion }
+            - { Name: HEALER_AUDIT_BUCKET, Value: !Ref AuditBucket }
+            - {
+                Name: GITHUB_REPO_URL,
+                Value: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepoName}.git",
+              }
+            - { Name: GITHUB_BASE_BRANCH, Value: !Ref GithubBaseBranch }
+          Secrets:
+            - { Name: GITHUB_TOKEN, ValueFrom: !Ref GithubTokenSecretArn }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref HealerLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: investigate
+
+  FixTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ProjectName}-${Environment}-healer-fix
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "1024"
+      Memory: "2048"
+      TaskRoleArn: !GetAtt HealerTaskRole.Arn
+      ExecutionRoleArn: !GetAtt HealerTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: healer-fix
+          Image: !Ref HealerImageUri
+          Command: ["node", "tasks/fix/run.js"]
+          Essential: true
+          Environment:
+            - { Name: BEDROCK_MODEL_ID, Value: !Ref BedrockModelId }
+            - { Name: BEDROCK_REGION, Value: !Ref BedrockRegion }
+            - { Name: HEALER_AUDIT_BUCKET, Value: !Ref AuditBucket }
+            - {
+                Name: GITHUB_REPO_URL,
+                Value: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepoName}.git",
+              }
+            - { Name: GITHUB_BASE_BRANCH, Value: !Ref GithubBaseBranch }
+          Secrets:
+            - { Name: GITHUB_TOKEN, ValueFrom: !Ref GithubTokenSecretArn }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref HealerLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: fix
+
+  TestTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ProjectName}-${Environment}-healer-test
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "2048"
+      Memory: "4096"
+      TaskRoleArn: !GetAtt HealerTaskRole.Arn
+      ExecutionRoleArn: !GetAtt HealerTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: healer-test
+          Image: !Ref HealerImageUri
+          Command: ["node", "tasks/test/run.js"]
+          Essential: true
+          Environment:
+            - {
+                Name: GITHUB_REPO_URL,
+                Value: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepoName}.git",
+              }
+            - { Name: GITHUB_BASE_BRANCH, Value: !Ref GithubBaseBranch }
+          Secrets:
+            - { Name: GITHUB_TOKEN, ValueFrom: !Ref GithubTokenSecretArn }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref HealerLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: test
+
+  StagePRFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-healer-stage-pr
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt HealerLambdaRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          GITHUB_REPO_OWNER: !Ref GithubRepoOwner
+          GITHUB_REPO_NAME: !Ref GithubRepoName
+          GITHUB_BASE_BRANCH: !Ref GithubBaseBranch
+          HEALER_AUDIT_BUCKET: !Ref AuditBucket
+          # ARN reference — token fetched at invocation time via SDK (not stored plaintext)
+          GITHUB_TOKEN_SECRET_ARN: !Ref GithubTokenSecretArn
+      Code:
+        S3Bucket: !Sub ${ProjectName}-${Environment}-lambda-zips-${AWS::AccountId}
+        S3Key: healer/lambdas/stage-pr.zip
+
+  StageNotifyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-healer-stage-notify
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt HealerLambdaRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          HEALER_AUDIT_BUCKET: !Ref AuditBucket
+      Code:
+        S3Bucket: !Sub ${ProjectName}-${Environment}-lambda-zips-${AWS::AccountId}
+        S3Key: healer/lambdas/stage-notify.zip
+
+  HealerStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub ${ProjectName}-${Environment}-healer-pipeline
+      RoleArn: !GetAtt HealerStateMachineRole.Arn
+      DefinitionSubstitutions:
+        StageIngestFunctionArn: !GetAtt StageIngestFunction.Arn
+        StagePRFunctionArn: !GetAtt StagePRFunction.Arn
+        StageNotifyFunctionArn: !GetAtt StageNotifyFunction.Arn
+        EcsClusterArn: !Ref EcsClusterArn
+        InvestigateTaskDefArn: !Ref InvestigateTaskDef
+        FixTaskDefArn: !Ref FixTaskDef
+        TestTaskDefArn: !Ref TestTaskDef
+        SubnetId: !Ref SubnetId
+        SecurityGroupId: !Ref SecurityGroupId
+      DefinitionString: |
+        {
+          "Comment": "AI Self-Healing Pipeline",
+          "StartAt": "IngestEnrichment",
+          "States": {
+            "IngestEnrichment": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${StageIngestFunctionArn}",
+                "Payload.$": "$"
+              },
+              "ResultSelector": { "executionId.$": "$.Payload.executionId" },
+              "Retry": [{ "ErrorEquals": ["States.TaskFailed"], "MaxAttempts": 2, "IntervalSeconds": 5 }],
+              "Catch": [
+                { "ErrorEquals": ["States.ALL"], "Next": "CreatePR", "ResultPath": "$.stageError" }
+              ],
+              "Next": "Investigate"
+            },
+            "Investigate": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::ecs:runTask.sync",
+              "Parameters": {
+                "Cluster": "${EcsClusterArn}",
+                "TaskDefinition": "${InvestigateTaskDefArn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {
+                  "AwsvpcConfiguration": {
+                    "Subnets": ["${SubnetId}"],
+                    "SecurityGroups": ["${SecurityGroupId}"],
+                    "AssignPublicIp": "ENABLED"
+                  }
+                },
+                "Overrides": {
+                  "ContainerOverrides": [
+                    {
+                      "Name": "healer-investigate",
+                      "Environment": [{ "Name": "EXECUTION_ID", "Value.$": "$.executionId" }]
+                    }
+                  ]
+                }
+              },
+              "Retry": [{ "ErrorEquals": ["States.TaskFailed"], "MaxAttempts": 1, "IntervalSeconds": 10 }],
+              "Catch": [
+                { "ErrorEquals": ["States.ALL"], "Next": "CreatePR", "ResultPath": "$.stageError" }
+              ],
+              "ResultPath": null,
+              "Next": "Fix"
+            },
+            "Fix": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::ecs:runTask.sync",
+              "Parameters": {
+                "Cluster": "${EcsClusterArn}",
+                "TaskDefinition": "${FixTaskDefArn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {
+                  "AwsvpcConfiguration": {
+                    "Subnets": ["${SubnetId}"],
+                    "SecurityGroups": ["${SecurityGroupId}"],
+                    "AssignPublicIp": "ENABLED"
+                  }
+                },
+                "Overrides": {
+                  "ContainerOverrides": [
+                    {
+                      "Name": "healer-fix",
+                      "Environment": [{ "Name": "EXECUTION_ID", "Value.$": "$.executionId" }]
+                    }
+                  ]
+                }
+              },
+              "Retry": [{ "ErrorEquals": ["States.TaskFailed"], "MaxAttempts": 1, "IntervalSeconds": 10 }],
+              "Catch": [
+                { "ErrorEquals": ["States.ALL"], "Next": "CreatePR", "ResultPath": "$.stageError" }
+              ],
+              "ResultPath": null,
+              "Next": "Test"
+            },
+            "Test": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::ecs:runTask.sync",
+              "Parameters": {
+                "Cluster": "${EcsClusterArn}",
+                "TaskDefinition": "${TestTaskDefArn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {
+                  "AwsvpcConfiguration": {
+                    "Subnets": ["${SubnetId}"],
+                    "SecurityGroups": ["${SecurityGroupId}"],
+                    "AssignPublicIp": "ENABLED"
+                  }
+                },
+                "Overrides": {
+                  "ContainerOverrides": [
+                    {
+                      "Name": "healer-test",
+                      "Environment": [{ "Name": "EXECUTION_ID", "Value.$": "$.executionId" }]
+                    }
+                  ]
+                }
+              },
+              "Retry": [{ "ErrorEquals": ["States.TaskFailed"], "MaxAttempts": 1, "IntervalSeconds": 10 }],
+              "Catch": [
+                { "ErrorEquals": ["States.ALL"], "Next": "CreatePR", "ResultPath": "$.stageError" }
+              ],
+              "ResultPath": null,
+              "Next": "CreatePR"
+            },
+            "CreatePR": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${StagePRFunctionArn}",
+                "Payload.$": "$"
+              },
+              "ResultSelector": { "executionId.$": "$.Payload.executionId" },
+              "Retry": [{ "ErrorEquals": ["States.TaskFailed"], "MaxAttempts": 2, "IntervalSeconds": 5 }],
+              "Catch": [{ "ErrorEquals": ["States.ALL"], "Next": "Notify", "ResultPath": "$.stageError" }],
+              "Next": "Notify"
+            },
+            "Notify": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${StageNotifyFunctionArn}",
+                "Payload.$": "$"
+              },
+              "End": true
+            }
+          }
+        }
+
+  HealerPipe:
+    Type: AWS::Pipes::Pipe
+    Properties:
+      Name: !Sub ${ProjectName}-${Environment}-healer-pipe
+      RoleArn: !GetAtt HealerPipeRole.Arn
+      Source: !GetAtt HealerTriggerQueue.Arn
+      Target: !Ref HealerStateMachine
+      TargetParameters:
+        StepFunctionStateMachineParameters:
+          InvocationType: FIRE_AND_FORGET
+
+Outputs:
+  SentryWebhookUrl:
+    Value: !Sub https://${IngestApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/webhook
+    Description: Configure this URL in Sentry alert webhook settings.
+
+  HealerSnsTopicArn:
+    Value: !Ref HealerTriggerTopic
+    Description: Pass as HealerSnsTopicArn to 10-bedrock-monitoring stack.
+
+  StateMachineArn:
+    Value: !Ref HealerStateMachine

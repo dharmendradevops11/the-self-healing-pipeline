@@ -1,43 +1,51 @@
-# The Self-Healing Pipeline: Companion Code
+# The Self-Healing Pipeline
 
-Code for **The Self-Healing Pipeline: How I Taught My CI/CD Pipeline to Fix Itself at 2 AM** by Dharmendra Ahuja.
+Companion repository for **The Self-Healing Pipeline: How I Taught My CI/CD Pipeline to Fix Itself at 2 AM** by Dharmendra Ahuja.
 
-## Layout
+It has two parts: a **deployable pipeline** you can run in your own AWS account, and **every code example from the book**, organized by chapter.
 
-- `companion_code/` holds the reference implementations indexed in Appendix D of the book.
-- `chapter-NN-.../` mirrors the book: one folder per chapter, with every code listing in reading order and a README mapping each file to its section.
-- `.manuscript_changelog.md` tracks revisions, as described in Appendix I.
+## 1. Run the pipeline
 
-## Using the code
+Sentry alert → SNS → SQS → EventBridge Pipe → Step Functions → ingest, investigate, fix, test, open a GitHub PR, notify. A human reviews the PR.
 
-- Chapter files are excerpts that illustrate one idea. Where a Python file parses as complete code, its chapter README says so; the rest assume the surrounding pipeline (Lambda, Step Functions, Bedrock, Sentry).
-- All account IDs, ARNs, tokens and endpoints are placeholders. Replace them before running anything.
-- Review and test every example in a secure staging environment before using it in production.
+- Code: [`infrastructure/healer/`](infrastructure/healer/) (TypeScript Lambdas and Fargate tasks) and [`infrastructure/cloudformation/self-healing-pipeline.yaml`](infrastructure/cloudformation/self-healing-pipeline.yaml)
+- Step-by-step setup, prerequisites and troubleshooting: [docs/PIPELINE_SETUP.md](docs/PIPELINE_SETUP.md)
 
-## Chapters
+```bash
+cd infrastructure/healer
+npm install
+npm run type-check && npm test   # 12 tests, 4 suites
+npm run build && npm run build:tasks
+```
 
-| # | Chapter | Code files |
+### What you change to make it yours
+
+All setup is configuration. Nothing in the code needs editing for a standard deployment.
+
+| Setting | Where | Notes |
 |---|---|---|
-| 1 | [The Real Cost of Pipeline Failures](chapter-01-the-real-cost-of-pipeline-failures/) | 3 |
-| 2 | [Beyond the Marketing Buzzword: A Working Definition](chapter-02-beyond-the-marketing-buzzword-a-working-definition/) | 4 |
-| 3 | [Triage and the 3 AM Alarm: What Machine Learning Actually Does in DevOps](chapter-03-triage-and-the-3-am-alarm-what-machine/) | 14 |
-| 4 | [The 47 Dashboards Nobody Looked At](chapter-04-the-47-dashboards-nobody-looked-at/) | 11 |
-| 5 | [The Alert That Cried Wolf 200 Times](chapter-05-the-alert-that-cried-wolf-200-times/) | 9 |
-| 6 | [Detecting the Slow-Motion Outage](chapter-06-detecting-the-slow-motion-outage/) | 8 |
-| 7 | [Remediation: When to Pull the Plug Automatically](chapter-07-remediation-when-to-pull-the-plug-automatically/) | 14 |
-| 8 | [What Happens When You Give an AI Write Access](chapter-08-what-happens-when-you-give-an-ai-write/) | 8 |
-| 9 | [The Trust Problem: Junior Swagger vs. Senior Scars](chapter-09-the-trust-problem-junior-swagger-vs-senior-scars/) | 7 |
-| 10 | [So I Killed a Pod: Validating the Healer with Chaos](chapter-10-so-i-killed-a-pod-validating-the-healer/) | 4 |
-| 11 | [The New Attack Surface: Security Risks of Autonomous Pipelines](chapter-11-the-new-attack-surface-security-risks-of-autonomous/) | 13 |
-| 12 | [Why Visibility Looks Like Failure](chapter-12-why-visibility-looks-like-failure/) | 3 |
-| 13 | [The State of Autonomous Pipelines: An Honest Assessment](chapter-13-the-state-of-autonomous-pipelines-an-honest-assessment/) | 7 |
-| 14 | [One Team Is Easy. Two Hundred Services Is Not.](chapter-14-one-team-is-easy-two-hundred-services-is/) | 2 |
-| 15 | [The ROI of Self-Healing: The Economics of Firefighting](chapter-15-the-roi-of-self-healing-the-economics-of/) | — |
-| 16 | [Four Incidents the Pipeline Changed](chapter-16-four-incidents-the-pipeline-changed/) | — |
-| 17 | [Start Local, Stay Local Until You Can’t](chapter-17-start-local-stay-local-until-you-cant/) | 9 |
-| 18 | [Where Autonomy Fails: The True Limitations](chapter-18-where-autonomy-fails-the-true-limitations/) | — |
-| 19 | [Appendices](chapter-19-appendices/) | — |
+| `GithubRepoOwner`, `GithubRepoName`, `GithubBaseBranch` | CloudFormation parameters | The repository you want healed |
+| `GithubTokenSecretArn`, `SentryAuthTokenSecretArn`, `SentryWebhookSecretArn` | CloudFormation parameters | Secrets Manager ARNs. Secrets are fetched at runtime, never stored in the template |
+| `EcsClusterArn`, `SubnetId`, `SecurityGroupId`, `HealerImageUri` | CloudFormation parameters | Your network and the ECR image you push |
+| `BedrockModelId`, `BedrockRegion` | CloudFormation parameters | Check that the model is enabled in your account and not retired |
+| `SlackWebhookUrl` | CloudFormation parameter | Required by the template, unused by current code (see setup doc) |
+| Git author email | `infrastructure/healer/tasks/shared/git-client.ts` | Placeholder `healer@your-domain.com` |
 
-## License and errata
+Test the pipeline in a non-production AWS account first. It can push branches and open pull requests against the repository you point it at.
 
-Code is licensed under the Apache License 2.0 (see [LICENSE](LICENSE)). It is provided for illustrative and reference purposes only. Corrections and issues: use this repository's issue tracker. The book text is not part of this repository.
+## 2. Book examples
+
+- [`chapters/`](chapters/) mirrors the book: one folder per chapter, every code listing in reading order, and a README mapping each file to its section. Most are excerpts that illustrate one idea.
+- [`companion_code/`](companion_code/) holds the standalone Python reference implementations indexed in Appendix D (anomaly detection, rate limiting, decision tree, signature validation, failure observer, secret scrubbing).
+- [`.manuscript_changelog.md`](.manuscript_changelog.md) tracks revisions.
+
+The Python examples are conceptual companions to the pipeline stages. They are not imported by the TypeScript pipeline.
+
+All account IDs, ARNs, tokens and endpoints in this repository are placeholders.
+
+## Licenses
+
+- Book examples (`chapters/`, `companion_code/`): Apache License 2.0, see [LICENSE](LICENSE).
+- Pipeline code (`infrastructure/`): MIT, Copyright (c) 2026 Abhishek Sahu, see [LICENSE-PIPELINE-MIT](LICENSE-PIPELINE-MIT).
+
+Everything is provided for illustrative and reference purposes, without warranty. Review and test in a secure staging environment before production use. Corrections and issues: use this repository's issue tracker.

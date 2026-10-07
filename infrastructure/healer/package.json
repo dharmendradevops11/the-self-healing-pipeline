@@ -1,0 +1,39 @@
+{
+  "name": "@aws-ai-self-healer/pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild lambdas/ingest/index.ts lambdas/stage-ingest/index.ts lambdas/stage-pr/index.ts lambdas/stage-notify/index.ts --bundle --platform=node --target=node20 --outdir=dist/lambdas --external:@aws-sdk/*",
+    "build:tasks": "esbuild tasks/investigate/run.ts tasks/fix/run.ts tasks/test/run.ts --bundle --platform=node --target=node20 --outdir=dist/tasks",
+    "test": "jest --forceExit",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.886.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.886.0",
+    "@aws-sdk/client-dynamodb": "^3.886.0",
+    "@aws-sdk/client-s3": "^3.886.0",
+    "@aws-sdk/client-secrets-manager": "^3.1147.0",
+    "@aws-sdk/client-sns": "^3.886.0",
+    "@aws-sdk/lib-dynamodb": "^3.886.0",
+    "@octokit/rest": "^21.0.0",
+    "axios": "^1.7.0",
+    "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.25.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.4.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ]
+  }
+}
