@@ -1,0 +1,4 @@
+/production/api/authentication
+/production/api/orders
+/production/workers/email-processor
+/staging/api/authentication

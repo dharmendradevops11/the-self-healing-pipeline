@@ -1,0 +1,8 @@
+{
+  "Effect": "Allow",
+  "Principal": { "AWS": "arn:aws:iam::111111111111:role/PipelineRole" },
+  "Action": "sts:AssumeRole",
+  "Condition": {
+    "StringEquals": { "sts:ExternalId": "unique-external-id-here" }
+  }
+}

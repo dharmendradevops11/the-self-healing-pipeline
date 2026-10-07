@@ -1,0 +1,25 @@
+# Simplified shape of the healer PR gate — the actual logic lives in
+# the Fargate investigation task; this is the policy it enforces.
+confidence_thresholds:
+  investigation_only:
+    range: [0, 59]
+    action: "open PR with HEALER_REPORT.md, no source changes"
+  code_fix:
+    range: [60, 100]
+    action: "generate diff, run tests, open PR with fix + evidence"
+
+safe_paths:
+  allowed:
+    - "src/"
+    - "lib/"
+    - "app/"
+    - "packages/"
+  forbidden:
+    - "infrastructure/"
+    - ".github/"
+    - "migrations/"
+    - "**/*.yaml"
+    - "**/*.sh"
+    - "Dockerfile*"
+
+auto_merge: false  # always; every fix, at every confidence level, needs a human click

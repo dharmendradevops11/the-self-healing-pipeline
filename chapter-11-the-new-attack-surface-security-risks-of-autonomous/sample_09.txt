@@ -1,0 +1,5 @@
+main:
+  required_reviews: 1
+  dismiss_stale_reviews: true
+  require_code_owner_reviews: true
+  enforce_admins: true  # AI agent service account is NOT in the bypass list

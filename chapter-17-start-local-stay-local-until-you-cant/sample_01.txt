@@ -1,0 +1,16 @@
+# Securely load tokens into shell variables to avoid shell history logging:
+read -sp "Enter GitHub Personal Access Token: " GITHUB_TOKEN
+echo ""
+read -sp "Enter Sentry DSN: " SENTRY_DSN
+echo ""
+
+# Create secrets in AWS Secrets Manager:
+aws secretsmanager create-secret \
+  --name self-healing-pipeline/github-token \
+  --secret-string "$GITHUB_TOKEN" \
+  --region us-east-1
+
+aws secretsmanager create-secret \
+  --name self-healing-pipeline/sentry-dsn \
+  --secret-string "$SENTRY_DSN" \
+  --region us-east-1

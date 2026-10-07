@@ -1,0 +1,14 @@
+# remediation_history table (DynamoDB)
+{
+    "incident_id": "sentry-a1b2c3-2024-03-15",
+    "service": "checkout-api",
+    "root_cause_hypothesis": "null dereference in auth.ts:52 when user.profile undefined",
+    "confidence_score": 78,
+    "remediation_type": "repair",           # retry | rollback | repair
+    "files_changed": ["src/auth/session.ts"],
+    "test_results": {"typecheck": "pass", "unit": "pass", "lint": "pass"},
+    "human_decision": "merged",              # merged | rejected | edited_then_merged
+    "time_to_pr_seconds": 912,
+    "recurrence_of": None,                   # incident_id of prior similar failure, if any
+    "created_at": "2024-03-15T09:14:00Z",
+}

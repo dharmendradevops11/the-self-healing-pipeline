@@ -1,0 +1,9 @@
+retention_policies = {'/staging/': 7, '/production/': 30}
+
+for log_group in cloudwatch_logs.describe_log_groups()['logGroups']:
+    group_name = log_group['logGroupName']
+    for prefix, days in retention_policies.items():
+        if group_name.startswith(prefix):
+            cloudwatch_logs.put_retention_policy(
+                logGroupName=group_name, retentionInDays=days
+            )

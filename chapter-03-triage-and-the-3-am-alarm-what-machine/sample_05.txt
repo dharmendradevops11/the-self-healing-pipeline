@@ -1,0 +1,7 @@
+interface LLMRootCauseAnalysis {
+  rootCauseHypothesis: string;
+  confidenceScore: number;   // 0-100
+  affectedFiles: string[];
+  fixStrategy: 'revert' | 'config_change' | 'scale' | 'investigate';
+  reasoning: string;
+}

@@ -1,0 +1,24 @@
+cloudwatch_logs.put_metric_filter(
+    logGroupName='/production/api/authentication',
+    filterName='AuthenticationFailures',
+    filterPattern='{ $.level = "ERROR" && $.event = "auth_failed" }',
+    metricTransformations=[{
+        'metricName': 'AuthFailureCount',
+        'metricNamespace': 'Pipeline/Authentication',
+        'metricValue': '1',
+        'defaultValue': 0,
+        'unit': 'Count'
+    }]
+)
+
+cloudwatch.put_metric_alarm(
+    AlarmName='AuthFailureSpike',
+    MetricName='AuthFailureCount',
+    Namespace='Pipeline/Authentication',
+    Statistic='Sum',
+    Period=300,
+    EvaluationPeriods=2,
+    Threshold=50,
+    ComparisonOperator='GreaterThanThreshold',
+    TreatMissingData='notBreaching'
+)

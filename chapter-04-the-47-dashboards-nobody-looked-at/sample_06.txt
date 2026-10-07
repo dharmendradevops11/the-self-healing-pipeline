@@ -1,0 +1,10 @@
+provider = TracerProvider()
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="your-collector:4317"))
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+RequestsInstrumentor().instrument()
+
+tracer = trace.get_tracer(__name__)
+with tracer.start_as_current_span("deploy-service"):
+    response = requests.post("https://api/deploy", json=payload)

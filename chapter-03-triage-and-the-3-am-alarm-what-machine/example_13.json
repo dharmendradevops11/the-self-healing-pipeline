@@ -1,0 +1,6 @@
+{
+  "rootCauseHypothesis": "Dependency version conflict. Package 'axios' 0.27.2 requires 'follow-redirects' ^1.14.0, but 'node-fetch' pinned it to 1.13.1 in the lockfile.",
+  "confidenceScore": 78,
+  "affectedFiles": ["package.json", "package-lock.json"],
+  "fixStrategy": "Run 'npm update follow-redirects', or downgrade axios to 0.26.x which accepts follow-redirects 1.13.x"
+}

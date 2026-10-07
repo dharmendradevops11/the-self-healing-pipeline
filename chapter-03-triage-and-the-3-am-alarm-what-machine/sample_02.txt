@@ -1,0 +1,9 @@
+# Single-feature version above cannot distinguish 3 AM from 3 PM.
+# Give it the context explicitly if you want context-aware detection.
+features = np.column_stack([
+    request_rates,              # the metric itself
+    timestamps.dt.hour,         # hour of day
+    timestamps.dt.dayofweek,    # weekday vs weekend traffic shape
+    deployed_recently.astype(int),  # was there a deploy in the last hour
+])
+model = IsolationForest(contamination=0.05, random_state=42).fit(features)

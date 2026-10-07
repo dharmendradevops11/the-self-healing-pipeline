@@ -1,0 +1,4 @@
+You have 30 seconds to explain what broke and why.
+Provide exactly one hypothesis — your best guess.
+If you're not 80% confident, say "insufficient data" and stop.
+List only files that directly caused the issue, not downstream effects.

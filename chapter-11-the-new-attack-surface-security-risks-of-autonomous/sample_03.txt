@@ -1,0 +1,21 @@
+function validateWebhook(payload: string, signature: string, secret: string): boolean {
+  if (!secret) {
+    return false; // fail closed, not open
+  }
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+
+  // WRONG: string comparison short-circuits and leaks timing information
+  // if (signature !== expected) return false;
+
+  // Also wrong: timingSafeEqual THROWS if the buffers differ in length,
+  // so an attacker sending a short signature turns a failed auth check
+  // into an unhandled exception. Compare lengths first.
+  const provided = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  if (provided.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  // RIGHT: equal-length buffers, constant-time comparison
+  return crypto.timingSafeEqual(provided, expectedBuffer);
+}

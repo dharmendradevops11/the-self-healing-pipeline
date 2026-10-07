@@ -1,0 +1,20 @@
+# This generates corporate-speak disguised as incident analysis
+prompt = """
+Analyze this incident and provide recommendations for resolution.
+"""
+
+# This generates something you can actually parse and threshold
+prompt = """
+Incident Context:
+- Error: {incident.error_message}
+- Service: {incident.service_name}
+- Recent changes: {incident.recent_commits}
+- Similar past incidents: {incident.similar_incidents[:3]}
+
+Required Output Format:
+1. Root Cause: [one sentence]
+2. Confidence: [0.0-1.0]
+3. Proposed Fix: [specific code change or configuration update]
+4. Blast Radius: [low/medium/high]
+5. Rollback Plan: [specific steps]
+"""

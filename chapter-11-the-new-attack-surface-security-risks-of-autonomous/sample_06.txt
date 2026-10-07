@@ -1,0 +1,16 @@
+export async function rotateGitHubPAT(event: any) {
+  const { SecretId: secretId, Step: step } = event;
+
+  if (step === 'createSecret') {
+    const newPAT = await createGitHubToken({ scopes: ['repo', 'workflow'] });
+    const current = JSON.parse(await getSecret(secretId)).current;
+    await putSecret(secretId, { current, pending: newPAT }, 'AWSPENDING');
+  } else if (step === 'testSecret') {
+    const { pending } = JSON.parse(await getSecret(secretId));
+    await validateGitHubToken(pending);
+  } else if (step === 'finishSecret') {
+    const { current, pending } = JSON.parse(await getSecret(secretId));
+    await revokeGitHubToken(current);
+    await putSecret(secretId, { current: pending }, 'AWSCURRENT');
+  }
+}

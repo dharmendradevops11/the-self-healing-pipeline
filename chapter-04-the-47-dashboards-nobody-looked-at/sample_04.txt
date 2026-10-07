@@ -1,0 +1,5 @@
+ERROR: Database operation failed
+java.sql.SQLException: Connection pool exhausted
+    at com.company.db.ConnectionPool.getConnection(ConnectionPool.java:45)
+    at com.company.service.UserService.fetchUser(UserService.java:78)
+    at com.company.api.UserController.getUser(UserController.java:23)

@@ -1,0 +1,22 @@
+incident:
+  sentry_event_id: "SENTRY-88213"
+  service: "checkout-api"
+  first_seen: "2026-07-19T02:14:00Z"
+  affected_users_estimate: 340
+
+diagnosis:
+  root_cause: "Null dereference in auth.ts:52 — user.profile undefined on first OAuth login"
+  confidence_score: 87
+  evidence: "20 CloudWatch log lines, stack trace, git blame on auth.ts"
+
+proposed_fix:
+  files_changed: ["src/auth.ts"]
+  diff_summary: "Add optional chaining + fallback default for user.profile"
+  tests_run: ["type-check: pass", "unit: pass (142/142)", "lint: pass"]
+
+blast_radius:
+  tier: "medium"
+  affected_services: 2
+  sensitive_data_at_risk: false
+
+rollback_plan: "git revert <commit-sha>; no schema or state changes involved"

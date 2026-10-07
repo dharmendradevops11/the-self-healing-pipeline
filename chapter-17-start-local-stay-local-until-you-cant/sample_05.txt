@@ -1,0 +1,10 @@
+# Securely populate the JSON structure:
+read -sp "Enter GitHub Token: " GITHUB_TOKEN
+echo ""
+SECRET_JSON="{\"token\":\"$GITHUB_TOKEN\"}"
+
+aws secretsmanager create-secret \
+  --name self-healing-pipeline/github-token \
+  --secret-string "$SECRET_JSON" \
+  --kms-key-id alias/aws/secretsmanager \
+  --region us-east-1

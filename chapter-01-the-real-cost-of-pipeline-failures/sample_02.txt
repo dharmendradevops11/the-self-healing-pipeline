@@ -1,0 +1,3 @@
+[142331.552104] Memory cgroup out of memory: Killed process 18823 (node)
+total-vm:4213208kB, anon-rss:2098140kB, file-rss:12440kB
+[142331.559812] oom_kill_process: 9 total_vm:4213208kB

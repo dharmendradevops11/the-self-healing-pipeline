@@ -1,0 +1,25 @@
+interface ChangeRecord {
+  changeId: string; timestamp: string;
+  changeType: 'autonomous_remediation' | 'manual_deployment';
+  triggeredBy: string;          // Sentry alert ID or GitHub user
+  // Three distinct actors. Collapsing them into one field is how an audit
+  // log ends up appearing to say the agent approved its own change.
+  proposedBy: string;           // 'ai_agent' or a human IAM principal
+  approvedBy: string;           // ALWAYS a human IAM principal, never the agent
+  executedBy: string;           // 'ai_agent' or a human IAM principal
+  changesApplied: { repository: string; commitSha: string; deploymentTarget: string };
+  riskAssessment: { severity: 'low' | 'medium' | 'high'; rollbackPlan: string };
+}
+
+async function recordChange(record: ChangeRecord): Promise<void> {
+  await dynamoClient.send(new PutItemCommand({
+    TableName: 'ComplianceChangeLog',
+    Item: marshall(record)
+  }));
+  await s3Client.send(new PutObjectCommand({
+    Bucket: 'compliance-evidence',
+    Key: `changes/${record.timestamp.split('T')[0]}/${record.changeId}.json`,
+    Body: JSON.stringify(record, null, 2),
+    ServerSideEncryption: 'aws:kms',
+  }));
+}

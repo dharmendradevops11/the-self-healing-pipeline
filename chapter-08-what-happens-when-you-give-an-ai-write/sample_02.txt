@@ -1,0 +1,10 @@
+Observation: OutOfMemoryError in logs, heap dump shows 4GB of cached objects
+Reasoning: "Cache should expire. Check cache configuration."
+Action: Read CacheConfig.java, find TTL set to 604800 seconds (7 days)
+Observation: Cache entries created Monday are still alive Friday evening
+Reasoning: "Weekly batch job runs Friday 6pm. Check for correlation."
+Action: Query CloudWatch for batch job timing, confirm overlap
+Observation: Batch job + 7-day cache = memory exhaustion
+Hypothesis: "Cache TTL exceeds weekly cycle, causing accumulation"
+Confidence: 0.87
+Fix Strategy: "Reduce cache TTL to 3600 seconds or add size-based eviction"

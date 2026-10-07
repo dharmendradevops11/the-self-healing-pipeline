@@ -1,0 +1,14 @@
+remediations:
+  service_restart:
+    trigger:
+      metric: health_check_failures
+      threshold: 3
+      window: 5m
+    action:
+      type: restart
+      max_attempts: 2
+      backoff: exponential
+    safety:
+      blast_radius: single_instance
+      reversible: true
+      approval: none

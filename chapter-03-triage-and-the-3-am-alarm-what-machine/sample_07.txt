@@ -1,0 +1,20 @@
+You are analyzing a production deployment failure. Return structured JSON only.
+
+Error from Sentry:
+Title: "TypeError: Cannot read property 'map' of undefined"
+Count: 52 occurrences in 3 minutes
+First seen: 2024-01-15T08:23:17Z
+Stack trace (sanitized): [top 5 frames]
+
+CloudWatch metrics:
+- API latency p95: 450ms -> 2800ms (spike at 08:23:15Z)
+- Error rate: 0.1% -> 8.3%
+- Memory usage: stable at 62%
+
+Recent deployment:
+- Commit: a3f9d21
+- Files changed: src/api/handlers/user.ts, src/utils/transform.ts
+- Deploy time: 08:22:54Z
+
+What is the most likely root cause? Return JSON with: rootCauseHypothesis,
+confidenceScore (0-100), affectedFiles, fixStrategy.

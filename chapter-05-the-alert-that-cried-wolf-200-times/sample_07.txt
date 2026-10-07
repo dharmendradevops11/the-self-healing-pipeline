@@ -1,0 +1,16 @@
+Resources:
+  DevOpsGuruResourceCollection:
+    Type: AWS::DevOpsGuru::ResourceCollection
+    Properties:
+      ResourceCollectionFilter:
+        CloudFormation:
+          StackNames:
+            - payment-service-stack
+            - user-service-stack
+
+  DevOpsGuruNotificationChannel:
+    Type: AWS::DevOpsGuru::NotificationChannel
+    Properties:
+      Config:
+        Sns:
+          TopicArn: !Ref DevOpsGuruAlertTopic

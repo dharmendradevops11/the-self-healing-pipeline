@@ -1,0 +1,13 @@
+filter {
+  if [source] == "jenkins" {
+    grok {
+      match => { "message" => "%{TIMESTAMP_ISO8601:timestamp} \[%{DATA:stage}\] %{GREEDYDATA:log_message}" }
+    }
+  }
+  # Extract common failure patterns
+  if [message] =~ /OutOfMemoryError|Connection refused|Timeout/ {
+    mutate {
+      add_field => { "failure_pattern" => "resource_exhaustion" }
+    }
+  }
+}

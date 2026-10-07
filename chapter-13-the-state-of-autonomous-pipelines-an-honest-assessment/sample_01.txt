@@ -1,0 +1,9 @@
+# 2:47 AM, manually executing runbook
+kubectl get pods -n production | grep CrashLoopBackOff
+kubectl describe pod api-7d9f8b-xyz
+# read logs, identify OOMKill
+kubectl set resources deployment/api --limits=memory=2Gi
+kubectl rollout restart deployment/api
+# wait 5 minutes, verify metrics
+# update incident ticket
+# go back to sleep

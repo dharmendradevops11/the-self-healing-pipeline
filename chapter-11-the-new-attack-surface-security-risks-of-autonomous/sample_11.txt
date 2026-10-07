@@ -1,0 +1,15 @@
+interface AuditRecord {
+  agentId: string;              // "healer-action-agent-v2.3"
+  invocationId: string;
+  triggeredBy: string;          // "sentry:alert:abc123"
+  action: string;               // "restart_service", "rollback_deployment"
+  targetResource: string;
+  analysis: string;             // observable evidence, tool calls, and decision factors
+                                // (exclude raw LLM prompts/payloads to prevent credential leakage)
+  confidence: number;           // 0.0-1.0
+  timestamp: string;
+  durationMs: number;
+  outcome: "success" | "failure" | "rollback" | "manual_override";
+  dataAccessed: string[];
+  dataModified: string[];
+}

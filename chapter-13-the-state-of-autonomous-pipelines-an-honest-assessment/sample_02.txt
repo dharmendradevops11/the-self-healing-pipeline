@@ -1,0 +1,3 @@
+# DON'T DO THIS. Kept here because the mistake is instructive.
+if incident.affected_users < 5:
+    return True

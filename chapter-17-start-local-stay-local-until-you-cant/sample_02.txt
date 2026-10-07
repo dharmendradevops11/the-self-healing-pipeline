@@ -1,0 +1,11 @@
+services:
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,dynamodb,secretsmanager
+      - DEBUG=1
+      - PERSISTENCE=1
+    volumes:
+      - "./localstack-data:/tmp/localstack/data"

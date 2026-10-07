@@ -1,0 +1,25 @@
+# 1. Destroy the CDK Stacks (removes Lambdas, ECS, Step Functions, Security Groups)
+cdk destroy --all -f
+
+# 2. Empty and delete the ECR container repositories.
+# Note: batch-delete-image fails if the repository has no images, so guard it
+# or ignore the error when tearing down a stack that never pushed one.
+aws ecr batch-delete-image \
+  --repository-name self-healing-pipeline/healer-agent \
+  --image-ids "$(aws ecr list-images --repository-name self-healing-pipeline/healer-agent --query 'imageIds[*]' --output json)"
+aws ecr delete-repository --repository-name self-healing-pipeline/healer-agent --force
+
+# 3. Empty and delete the S3 state buckets.
+# The audit bucket is under Object Lock, so check its retention posture FIRST.
+# Objects under an unexpired retention date cannot be deleted, and the correct
+# response is to wait for expiry, not to weaken the control.
+aws s3api get-object-lock-configuration --bucket self-healing-pipeline-audit-logs
+aws s3api get-bucket-versioning --bucket self-healing-pipeline-audit-logs
+
+# Non-audit state buckets tear down normally:
+aws s3 rm s3://self-healing-pipeline-state/ --recursive
+aws s3api delete-bucket --bucket self-healing-pipeline-state
+
+# 4. Remove secrets from Secrets Manager (scheduled for deletion in 7 days)
+aws secretsmanager delete-secret --secret-id self-healing-pipeline/github-token --force-delete-without-recovery
+aws secretsmanager delete-secret --secret-id self-healing-pipeline/sentry-dsn --force-delete-without-recovery

@@ -1,0 +1,16 @@
+file_patterns:
+  allowed:
+    - "src/**/*.py"
+    - "tests/**/*"
+    - "requirements.txt"
+  denied:
+    - "**/.env*"
+    - "**/secrets.yaml"
+    - "infrastructure/**/*"
+    - "**/database/migrations/*"
+    - "Dockerfile"
+
+validation:
+  max_files_per_patch: 5
+  max_lines_per_file: 500
+  require_tests: true

@@ -1,0 +1,8 @@
+const secretsClient = new SecretsManagerClient({});
+
+async function getGitHubToken(): Promise<string> {
+  const response = await secretsClient.send(
+    new GetSecretValueCommand({ SecretId: 'prod/github/healer-pat' })
+  );
+  return JSON.parse(response.SecretString!).token;
+}
