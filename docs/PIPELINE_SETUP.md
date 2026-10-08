@@ -4,7 +4,7 @@
 
 > Autonomous AI-powered backend repair. Detects issues → investigates root cause → generates a fix → runs tests → opens a GitHub PR. **Your team only reviews the PR.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-PIPELINE-MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![AWS Bedrock](https://img.shields.io/badge/Powered%20by-AWS%20Bedrock-orange)](https://aws.amazon.com/bedrock/)
 
@@ -81,7 +81,7 @@ All stages share state via **S3** (`pipeline-state/{executionId}/state.json`). A
 - GitHub **Personal Access Token** (fine-grained: `Contents: write` + `Pull requests: write`)
 - Sentry account *(optional — can trigger manually via Step Functions)*
 - Slack incoming webhook or AWS Chatbot
-- Docker, AWS CLI, Node.js 20+
+- Docker, AWS CLI, Node.js 22
 
 ---
 
@@ -174,6 +174,8 @@ aws cloudformation deploy \
     SentryWebhookSecretArn="arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:/YOUR_PROJECT/healer/sentry-webhook-secret" \
     GithubRepoOwner="YOUR_GITHUB_ORG" \
     GithubRepoName="YOUR_REPO" \
+    SafePathPrefixes="src/,lib/" \
+    GitAuthorEmail="healer@your-domain.com" \
     GithubBaseBranch="main" \
     SlackWebhookUrl="https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK" \
     HealerImageUri="ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/YOUR_PROJECT/healer:latest" \
@@ -378,4 +380,4 @@ PRs welcome! Key areas:
 
 ## License
 
-MIT — see [LICENSE-PIPELINE-MIT](../LICENSE-PIPELINE-MIT)
+Apache License 2.0 — see [LICENSE](../LICENSE)

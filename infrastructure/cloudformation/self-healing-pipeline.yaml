@@ -5,6 +5,12 @@ Description: >
   Step Functions (INGEST -> INVESTIGATE -> FIX -> TEST -> PR -> NOTIFY).
 
 Parameters:
+  ProjectName:
+    Type: String
+    Description: Short lowercase prefix used to name resources, for example myapp.
+    AllowedPattern: "^[a-z0-9][a-z0-9-]*$"
+    ConstraintDescription: Lowercase letters, numbers and hyphens only (used in S3 bucket names).
+
   Environment:
     Type: String
     AllowedValues: [dev, staging, production]
@@ -25,7 +31,6 @@ Parameters:
   GithubRepoOwner:
     Type: String
     Description: GitHub organization or username that owns the repository to heal.
-    Type: String
     Default: YOUR-GITHUB-ORG
 
   GithubRepoName:
@@ -35,6 +40,16 @@ Parameters:
   GithubBaseBranch:
     Type: String
     Default: develop
+
+  SafePathPrefixes:
+    Type: String
+    Default: "src/,lib/,app/,packages/,server/,api/"
+    Description: Comma-separated directories the AI is allowed to modify in the target repository.
+
+  GitAuthorEmail:
+    Type: String
+    Default: "healer@example.com"
+    Description: Email used as the git author on healer commits.
 
   SlackWebhookUrl:
     Type: String
@@ -333,7 +348,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub ${ProjectName}-${Environment}-healer-ingest
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Handler: index.handler
       Role: !GetAtt HealerLambdaRole.Arn
       Timeout: 30
@@ -359,7 +374,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub ${ProjectName}-${Environment}-healer-stage-ingest
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Handler: index.handler
       Role: !GetAtt HealerLambdaRole.Arn
       Timeout: 60
@@ -428,6 +443,8 @@ Resources:
                 Value: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepoName}.git",
               }
             - { Name: GITHUB_BASE_BRANCH, Value: !Ref GithubBaseBranch }
+            - { Name: HEALER_SAFE_PATH_PREFIXES, Value: !Ref SafePathPrefixes }
+            - { Name: GIT_AUTHOR_EMAIL, Value: !Ref GitAuthorEmail }
           Secrets:
             - { Name: GITHUB_TOKEN, ValueFrom: !Ref GithubTokenSecretArn }
           LogConfiguration:
@@ -471,7 +488,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub ${ProjectName}-${Environment}-healer-stage-pr
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Handler: index.handler
       Role: !GetAtt HealerLambdaRole.Arn
       Timeout: 60
@@ -491,7 +508,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub ${ProjectName}-${Environment}-healer-stage-notify
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Handler: index.handler
       Role: !GetAtt HealerLambdaRole.Arn
       Timeout: 30

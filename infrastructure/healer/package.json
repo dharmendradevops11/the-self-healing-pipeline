@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "esbuild lambdas/ingest/index.ts lambdas/stage-ingest/index.ts lambdas/stage-pr/index.ts lambdas/stage-notify/index.ts --bundle --platform=node --target=node20 --outdir=dist/lambdas --external:@aws-sdk/*",
-    "build:tasks": "esbuild tasks/investigate/run.ts tasks/fix/run.ts tasks/test/run.ts --bundle --platform=node --target=node20 --outdir=dist/tasks",
+    "build": "esbuild lambdas/ingest/index.ts lambdas/stage-ingest/index.ts lambdas/stage-pr/index.ts lambdas/stage-notify/index.ts --bundle --platform=node --target=node22 --outdir=dist/lambdas --external:@aws-sdk/*",
+    "build:tasks": "esbuild tasks/investigate/run.ts tasks/fix/run.ts tasks/test/run.ts --bundle --platform=node --target=node22 --outdir=dist/tasks",
     "test": "jest --forceExit",
     "type-check": "tsc --noEmit"
   },

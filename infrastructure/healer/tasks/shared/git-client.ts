@@ -25,7 +25,7 @@ export const cloneRepo = async (): Promise<CloneResult> => {
   await git.clone(authenticatedUrl, repoPath, ["--depth", "1", "--branch", branch]);
 
   const repoGit = simpleGit(repoPath);
-  await repoGit.addConfig("user.email", "healer@your-domain.com");
+  await repoGit.addConfig("user.email", process.env.GIT_AUTHOR_EMAIL ?? "healer@example.com");
   await repoGit.addConfig("user.name", "AI Self-Healer");
 
   return { repoPath, git: repoGit };
