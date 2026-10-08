@@ -42,12 +42,19 @@ flowchart LR
 
 | Stage | What happens |
 |---|---|
-| **1. Ingest** | Validates the webhook, pulls the last CloudWatch log lines, and applies an atomic per-service rate limit in DynamoDB. |
-| **2. Investigate** | Clones your repo, reads the files named in the stack trace, and asks Claude on Amazon Bedrock for a root cause with a **0-100 confidence score**. |
-| **3. Fix** | At confidence 60 or above, generates a unified diff, checks it against a path allowlist, and pushes a `healer/...` branch. Below 60 it writes an investigation report instead. |
+| **1. Ingest** | Validates the webhook, pulls recent CloudWatch log lines, and applies an atomic per-service rate limit in DynamoDB. |
+| **2. Investigate** | Clones your repo, reads the files named in the stack trace, and asks Claude on Amazon Bedrock for a root cause. The model's own certainty is **not** trusted on its own. It is blended into a **composite confidence score** with signal strength (how much evidence we gathered) and the historical success rate for that failure category, from the trust ledger. The service's **blast radius** is then estimated from your service registry. |
+| **3. Fix** | The **escalation matrix** (confidence band x blast radius) decides what the pipeline may do: investigate only, or open a PR for standard or expedited review. Only then is a fix generated, checked against a path allowlist, and pushed to a `healer/...` branch. |
 | **4. Test** | Runs type-check, unit tests and lint on the changed files. |
-| **5. PR** | Opens a pull request with the investigation, confidence score and test results. |
-| **6. Notify** | Publishes to an SNS topic, which can feed AWS Chatbot (Slack), email or any subscriber. |
+| **5. PR** | Opens a pull request with a **reviewer packet** (`HEALER_REPORT.md`): what broke, how sure the system is, the proposed patch, blast radius and a rollback plan. It also records a `pending` row in the trust ledger. |
+| **6. Notify** | Publishes to SNS by escalation tier (informational, warning, critical) with filterable message attributes, so only critical issues page anyone. |
+
+### Decision model (Chapter 9)
+
+- **Composite confidence** = 0.30 signal strength + 0.45 model certainty + 0.25 historical success rate. If history is sparse, a neutral 0.5 prior is used and half of its weight moves to the model.
+- **Bands:** low below 60, medium 60 to 84, high 85 and above.
+- **Blast radius tiers:** low, medium, high, critical, from the number of users reachable through the dependency tree, and critical if payment or PII data is in the path.
+- **Matrix:** the pair (band, tier) selects `auto_fix_pr`, `fix_pr_standard_review`, `fix_pr_expedited_review` or `investigation_only`, and the notification tier. Nothing merges itself at any score.
 
 Stages hand data to each other through S3, because Step Functions `ecs:runTask.sync` does not return a task's output.
 
@@ -70,7 +77,7 @@ Then push the container image, upload the Lambda bundles, and deploy the CloudFo
 
 ## Configuration
 
-Setup is configuration. A standard deployment needs no code changes.
+Setup is configuration. You should not need to edit source code.
 
 | Setting | Where | What it is |
 |---|---|---|
@@ -81,17 +88,21 @@ Setup is configuration. A standard deployment needs no code changes.
 | `BedrockModelId`, `BedrockRegion` | CloudFormation parameters | Confirm the model is enabled in your account and not retired |
 | `SlackWebhookUrl` | CloudFormation parameter | Still required by the template but unused by the current code. Any placeholder works. |
 | `SafePathPrefixes` | CloudFormation parameter | Comma-separated directories the AI may change in your repo. Defaults to `src/,lib/,app/,packages/,server/,api/`. **Set this to match your repository layout**, otherwise the fix stage rejects every change. |
+| `ServiceRegistryJson` | CloudFormation parameter | JSON registry used for blast radius: `{"checkout-api": {"dependents": ["ledger"], "estimated_users": 80000, "handles_pii_or_payment": false, "owner": "payments", "oncall": "payments-oncall"}}`. Defaults to `{}`. |
+| `UnknownServiceTier` | CloudFormation parameter | Blast-radius tier assumed for a service missing from the registry. Defaults to `medium`. |
+| `PnpmWorkspaceFilter` | CloudFormation parameter | Optional pnpm workspace package in which to run `test:unit` (for example `@myorg/api`). Empty runs it at the repo root. |
 | `GitAuthorEmail` | CloudFormation parameter | Git author email on healer commits. Defaults to `healer@example.com`. |
 
-The TEST stage installs dependencies with `pnpm`, so the repository being healed should use pnpm.
+The TEST stage runs `pnpm install --frozen-lockfile`, `pnpm type:check`, `pnpm test:unit` and `eslint`, so the repository being healed needs a `pnpm-lock.yaml` and those scripts.
 
 ## Safety model
 
 The design assumes the model will sometimes be wrong, so every step limits the damage.
 
 - **Humans merge.** The pipeline can only open a pull request. It never merges.
-- **Confidence gate.** Below 60 it produces a report and no code change.
+- **Composite confidence and the escalation matrix.** Below 60, or when blast radius is too high for the confidence, it produces a report and no code change. The model never decides its own authority.
 - **Path allowlist.** Diffs outside `SafePathPrefixes` are rejected. `infrastructure/`, `.github/`, migrations, Dockerfiles, YAML and shell scripts are always forbidden.
+- **Audit trail.** Every reasoning step is written to S3 as `audit/<execution>/step_NNN_<type>.json`, and every outcome is tracked in the trust ledger.
 - **Rate limit.** Atomic DynamoDB counter, three runs per service per hour (set by `MAX_PER_HOUR` in `lambdas/shared/dynamodb-client.ts`).
 - **Scoped IAM.** Separate roles for Lambdas, tasks, the state machine and the pipe, with `ecs:RunTask` limited to the healer task definitions.
 - **No API keys to manage.** Claude runs through Bedrock inside your own AWS account, and tokens come from Secrets Manager.

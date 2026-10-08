@@ -5,8 +5,12 @@ import { safeSpawn } from "../shared/spawn";
 import { writePipelineState, readPipelineState } from "../shared/s3-client";
 import { PipelineState, TestResults, TestCheckResult } from "../../lambdas/shared/types";
 
+// The container sets NODE_ENV=production for the healer itself. The repository under test
+// needs its devDependencies (tsc, jest, eslint), so run its tooling in a development environment.
+const TOOLING_ENV = { ...process.env, NODE_ENV: "development" };
+
 const runCheck = (cmd: string, args: string[], cwd: string): TestCheckResult => {
-  const result = safeSpawn(cmd, args, { cwd, throwOnError: false, timeout: 300_000 });
+  const result = safeSpawn(cmd, args, { cwd, env: TOOLING_ENV, throwOnError: false, timeout: 300_000 });
   return { passed: result.status === 0, output: (result.stdout + result.stderr).slice(-2000) };
 };
 
@@ -32,8 +36,9 @@ const main = async () => {
 
   try {
   safeSpawn("git", ["fetch", "origin", branchName], { cwd: repoPath });
-  safeSpawn("git", ["checkout", branchName], { cwd: repoPath });
-  safeSpawn("pnpm", ["install", "--frozen-lockfile"], { cwd: repoPath, timeout: 300_000 });
+  // The clone is shallow and single-branch, so fetch leaves no local ref; check out FETCH_HEAD.
+  safeSpawn("git", ["checkout", "-B", branchName, "FETCH_HEAD"], { cwd: repoPath });
+  safeSpawn("pnpm", ["install", "--frozen-lockfile"], { cwd: repoPath, env: TOOLING_ENV, timeout: 300_000 });
 
   const changedFiles = state.fix?.affectedFiles ?? [];
   const apiFilesChanged = changedFiles.some((f) => f.includes("src/") || f.includes("lib/"));
@@ -44,14 +49,14 @@ const main = async () => {
 
   const fileBasenames = [...new Set(changedFiles.map((f) => path.basename(f, path.extname(f))))];
   const testPattern = fileBasenames.map((n) => `${n}\\.test`).join("|");
+  // Optional pnpm workspace package (HEALER_PNPM_FILTER, e.g. "@myorg/api"). Empty = run at the repo root.
+  const pnpmFilter = process.env.HEALER_PNPM_FILTER?.trim();
   const unitTests = apiFilesChanged
     ? runCheck(
         "pnpm",
         [
-          "--filter",
-          "YOUR_WORKSPACE", // TODO: replace with your pnpm workspace package name (e.g. "@myorg/api")
+          ...(pnpmFilter ? ["--filter", pnpmFilter] : []),
           "test:unit",
-          "--",
           `--testPathPattern=${testPattern}`,
           "--passWithNoTests",
         ],

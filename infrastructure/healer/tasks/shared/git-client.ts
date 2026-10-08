@@ -33,11 +33,13 @@ export const cloneRepo = async (): Promise<CloneResult> => {
 
 export const applyPatch = (repoPath: string, diff: string): void => {
   const patchPath = path.join(os.tmpdir(), `healer-patch-${Date.now()}.patch`);
-  fs.writeFileSync(patchPath, diff, "utf8");
+  // git apply rejects a patch without a trailing newline.
+  fs.writeFileSync(patchPath, diff.endsWith("\n") ? diff : `${diff}\n`, "utf8");
   try {
     // --3way: falls back to 3-way merge on context drift (more forgiving)
     // --whitespace=fix: auto-correct CRLF/trailing-space mismatches
-    safeSpawn("git", ["apply", "--3way", "--whitespace=fix", patchPath], { cwd: repoPath });
+    // --recount: LLMs often miscount hunk line numbers; let git recompute them
+    safeSpawn("git", ["apply", "--3way", "--recount", "--whitespace=fix", patchPath], { cwd: repoPath });
   } finally {
     fs.unlinkSync(patchPath);
   }

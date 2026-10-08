@@ -61,25 +61,48 @@ const main = async () => {
     if (content) fileContents[f] = content;
   }
 
-  const userPrompt = buildFixPrompt(event, investigation, fileContents);
+  // The escalation matrix (Chapter 9) decides what authority the pipeline has, not the model.
+  // Without a decision (older state), fall back to the 60 gate on the composite score.
+  const authority =
+    state.decision?.fixAction ??
+    (investigation.confidenceScore >= 60 ? "fix_pr_standard_review" : "investigation_only");
 
   let raw = "";
-  try {
-    const result = await invokeClaudeJson<FixResult>(FIX_SYSTEM_PROMPT, userPrompt);
-    raw = result.raw;
-    parsed = result.parsed;
-    await storeAuditLog(executionId, "fix", {
-      prompt: userPrompt,
-      response: raw,
-      metadata: { tokens: result.tokens, fixType: parsed.type },
+  if (authority === "investigation_only") {
+    const d = state.decision;
+    parsed = {
+      type: "investigation-only",
+      diff: "",
+      affectedFiles: investigation.affectedFiles,
+      confidenceScore: investigation.confidenceScore,
+      explanation: d
+        ? `Investigation only: composite confidence ${d.compositeConfidence}/100 (${d.band}) with ${d.blastRadius.tier} blast radius. The escalation matrix does not authorize a code fix.`
+        : `Investigation only: composite confidence ${investigation.confidenceScore}/100 is below the fix threshold of 60.`,
+    };
+    await storeAuditLog(executionId, "fix-skipped", {
+      response: parsed.explanation,
+      confidence: investigation.confidenceScore,
     });
-  } catch (err) {
-    await storeAuditLog(executionId, "fix-error", {
-      prompt: userPrompt,
-      response: raw,
-      metadata: { error: String(err) },
-    });
-    throw err;
+  } else {
+    const userPrompt = buildFixPrompt(event, investigation, fileContents);
+    try {
+      const result = await invokeClaudeJson<FixResult>(FIX_SYSTEM_PROMPT, userPrompt);
+      raw = result.raw;
+      parsed = result.parsed;
+      await storeAuditLog(executionId, "fix", {
+        prompt: userPrompt,
+        response: raw,
+        metadata: { tokens: result.tokens, fixType: parsed.type },
+        confidence: investigation.confidenceScore,
+      });
+    } catch (err) {
+      await storeAuditLog(executionId, "fix-error", {
+        prompt: userPrompt,
+        response: raw,
+        metadata: { error: String(err) },
+      });
+      throw err;
+    }
   }
 
   if (parsed!.type === "code-fix" && parsed!.diff) {
@@ -119,10 +142,13 @@ const main = async () => {
       `**Execution:** ${executionId}`,
       `**Date:** ${date}`,
       `**Issue:** ${event.title}`,
-      `**Confidence:** below threshold — no code fix generated`,
+      `**Confidence:** ${investigation.confidenceScore}/100 (composite) — no code fix generated`,
       ``,
       `## Root Cause`,
-      parsed!.explanation ?? "No root cause identified.",
+      investigation.rootCauseHypothesis ?? "No root cause identified.",
+      ``,
+      `## Why no fix`,
+      parsed!.explanation ?? "No fix was generated.",
       ``,
       `## Recommendation`,
       `Manual review required. This PR contains the investigation report only.`,

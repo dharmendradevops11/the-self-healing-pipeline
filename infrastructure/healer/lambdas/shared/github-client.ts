@@ -1,6 +1,9 @@
 import { Octokit } from "@octokit/rest";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { PipelineState, TestResults } from "./types";
+import { buildReviewerPacket } from "./reviewer-packet";
+import { recordOutcome } from "./ledger-client";
+import { logReasoningStep } from "./audit";
 
 const smClient = new SecretsManagerClient({ region: process.env.AWS_REGION ?? "us-east-2" });
 
@@ -42,11 +45,18 @@ ${event.sentryIssueUrl ? `**Sentry:** ${event.sentryIssueUrl}` : ""}
 
 ---
 
+### Routing decision
+
+${state.decision ? `**Composite confidence:** ${state.decision.compositeConfidence}/100 (${state.decision.band}) | **Blast radius:** ${state.decision.blastRadius.tier} | **Action:** \`${state.decision.fixAction}\`
+**Escalation:** ${state.decision.tier} → ${state.decision.recipient} (${state.decision.channel})` : "_No routing decision recorded._"}
+
+---
+
 ### Root Cause Analysis
 
 ${investigation?.rootCauseHypothesis ?? "_Investigation did not complete._"}
 
-**Confidence:** ${confidence}/100
+**Confidence:** ${confidence}/100${investigation?.modelConfidenceScore !== undefined ? ` (model said ${investigation.modelConfidenceScore}, signal ${Math.round((investigation.signalStrength ?? 0) * 100)}%, history ${investigation.historicalSuccessRate == null ? "n/a" : Math.round(investigation.historicalSuccessRate * 100) + "%"})` : ""}
 **Fix strategy:** ${investigation?.fixStrategy ?? "N/A"}
 **Files analysed:** ${(investigation?.affectedFiles ?? []).map((f) => `\`${f}\``).join(", ") || "None"}
 
@@ -71,8 +81,19 @@ ${state.stageError ? `\n> Pipeline error in stage \`${state.failedStage}\`: ${st
 `;
 };
 
+const ACTION_LABELS: Record<string, string> = {
+  auto_fix_pr: "healer: auto-fix-pr",
+  fix_pr_standard_review: "healer: standard-review",
+  fix_pr_expedited_review: "healer: expedited-review",
+  investigation_only: "healer: investigation-only",
+};
+
 const buildLabels = (state: PipelineState): string[] => {
   const labels = ["healer"];
+  const d = state.decision;
+  if (d) {
+    labels.push(ACTION_LABELS[d.fixAction], `healer: blast-radius-${d.blastRadius.tier}`);
+  }
   if ((state.investigation?.confidenceScore ?? 0) < 60) labels.push("healer: low-confidence");
   if ((state.fix?.diff ?? "").split("\n").length > 400) labels.push("healer: large-diff");
   if ((state.fix?.affectedFiles ?? []).some((f) => f.includes("infrastructure/templates"))) {
@@ -117,6 +138,25 @@ export const createHealerPR = async (
     });
   }
 
+  // Reviewer packet (Chapter 9): commit HEALER_REPORT.md to the branch so it travels with the PR.
+  const { data: head } = await octokit.repos.getBranch({ owner, repo, branch });
+  let existingSha: string | undefined;
+  try {
+    const { data: existing } = await octokit.repos.getContent({ owner, repo, path: "HEALER_REPORT.md", ref: branch });
+    if (!Array.isArray(existing) && "sha" in existing) existingSha = existing.sha;
+  } catch {
+    existingSha = undefined;
+  }
+  await octokit.repos.createOrUpdateFileContents({
+    owner,
+    repo,
+    path: "HEALER_REPORT.md",
+    branch,
+    message: "chore(healer): add reviewer packet",
+    content: Buffer.from(buildReviewerPacket(state, head.commit.sha), "utf8").toString("base64"),
+    ...(existingSha ? { sha: existingSha } : {}),
+  });
+
   const title = `[HEALER] ${isFixPR ? "fix" : "investigate"}: ${state.event.title.slice(0, 70)}`;
 
   const { data: pr } = await octokit.pulls.create({
@@ -135,6 +175,29 @@ export const createHealerPR = async (
     issue_number: pr.number,
     labels: buildLabels(state),
   });
+
+  // Trust ledger: start tracking this outcome as "pending" until a reviewer decides.
+  try {
+    await recordOutcome({
+      executionId: state.executionId,
+      hypothesis: state.investigation?.rootCauseHypothesis ?? "",
+      confidence: state.investigation?.confidenceScore ?? 0,
+      humanVerdict: "pending",
+      fixWorked: null,
+      category: state.investigation?.category,
+    });
+  } catch (err) {
+    console.warn(`[PR] Could not record ledger entry: ${String(err)}`);
+  }
+  try {
+    await logReasoningStep(state.executionId, {
+      stepType: "pr",
+      output: { prUrl: pr.html_url, prNumber: pr.number, labels: buildLabels(state) },
+      confidence: state.investigation?.confidenceScore,
+    });
+  } catch (err) {
+    console.warn(`[PR] Could not write audit step: ${String(err)}`);
+  }
 
   return { prUrl: pr.html_url, prNumber: pr.number };
 };

@@ -54,6 +54,23 @@ describe("Stage 6 NOTIFY", () => {
     expect(input.Message).toContain("pull/99");
   });
 
+  it("routes by escalation tier with filterable message attributes", async () => {
+    mockReadState.mockResolvedValue({
+      ...state,
+      decision: {
+        band: "medium", tier: "critical", fixAction: "investigation_only", recipient: "payments-oncall",
+        page: "always", channel: "pagerduty", compositeConfidence: 70, owner: "payments-team",
+        blastRadius: { affected_services: 1, estimated_users: 900, sensitive_data_at_risk: true, tier: "critical" },
+      },
+    });
+    await handler({ executionId: "exec-003" });
+    const { input } = mockSend.mock.calls[0][0];
+    expect(input.Subject).toContain("[CRITICAL]");
+    expect(input.Message).toContain("payments-oncall");
+    expect(input.MessageAttributes.escalationTier.StringValue).toBe("critical");
+    expect(input.MessageAttributes.page.StringValue).toBe("always");
+  });
+
   it("does not throw if SNS publish fails", async () => {
     mockSend.mockRejectedValueOnce(new Error("SNS down"));
     await expect(handler({ executionId: "exec-003" })).resolves.not.toThrow();

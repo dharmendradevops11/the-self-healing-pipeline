@@ -3,6 +3,9 @@ import { cloneRepo, readFileFromRepo, getRecentCommitsForFiles } from "../shared
 import { invokeClaudeJson } from "../shared/bedrock-client";
 import { storeAuditLog, writePipelineState, readPipelineState } from "../shared/s3-client";
 import { buildInvestigationPrompt, INVESTIGATION_SYSTEM_PROMPT } from "./prompts";
+import { computeConfidence, computeSignalStrength } from "../../lambdas/shared/decision";
+import { buildDecision, parseRegistry, parseTier } from "../../lambdas/shared/routing";
+import { getHistoricalSuccessRate } from "../../lambdas/shared/ledger-client";
 import {
   PipelineState,
   InvestigationReport,
@@ -28,6 +31,10 @@ const main = async () => {
 
   let raw = "";
   let parsed!: InvestigationReport;
+  let signalStrength = 0;
+  let impliedCount = 0;
+  let readCount = 0;
+  let hasCommits = false;
 
   try {
   const impliedFiles = extractFilesFromStackTrace(enriched.stackTrace ?? "");
@@ -39,6 +46,16 @@ const main = async () => {
   }
 
   const recentCommits = await getRecentCommitsForFiles(git, impliedFiles, 5);
+  impliedCount = impliedFiles.length;
+  readCount = Object.keys(fileContents).length;
+  hasCommits = recentCommits.trim().length > 0;
+  signalStrength = computeSignalStrength({
+    logLines: Math.min((enriched.cloudwatchLogs ?? []).length, 20),
+    hasStackTrace: Boolean(enriched.stackTrace),
+    filesImplied: impliedCount,
+    filesRead: readCount,
+    hasCommitContext: hasCommits,
+  });
   const userPrompt = buildInvestigationPrompt(enriched, fileContents, recentCommits);
   try {
     const result = await invokeClaudeJson<InvestigationReport>(
@@ -61,14 +78,43 @@ const main = async () => {
     throw err;
   }
 
-  console.log(`[INVESTIGATE] Confidence: ${parsed!.confidenceScore}/100`);
   } finally {
     fs.rmSync(repoPath, { recursive: true, force: true });
   }
 
+  // Composite confidence (Chapter 9): never trust the model's self-reported certainty alone.
+  const modelScore = Math.max(0, Math.min(100, Number(parsed!.confidenceScore) || 0));
+  const errorClass = (enriched.title.split(":")[0] ?? "").trim();
+  const category = `${enriched.type}:${/^[A-Za-z]+(Error|Exception)$/.test(errorClass) ? errorClass : "unknown"}`;
+  const history = await getHistoricalSuccessRate(category);
+  const composite = computeConfidence(signalStrength, modelScore / 100, history);
+
+  const registry = parseRegistry(process.env.HEALER_SERVICE_REGISTRY);
+  const unknownTier = parseTier(process.env.HEALER_UNKNOWN_SERVICE_TIER, "medium");
+  const decision = buildDecision(enriched.affectedService, composite, registry, unknownTier);
+
+  console.log(
+    `[INVESTIGATE] model=${modelScore} signal=${signalStrength.toFixed(2)} history=${history ?? "n/a"} ` +
+      `-> composite=${composite} (${decision.band}), blast radius=${decision.blastRadius.tier}, action=${decision.fixAction}`,
+  );
+  await storeAuditLog(executionId, "confidence", {
+    prompt: JSON.stringify({ modelScore, signalStrength, history, category }),
+    response: JSON.stringify(decision),
+    confidence: composite,
+  });
+
   const updated: PipelineState = {
     ...state,
-    investigation: { ...parsed!, rawBedrockResponse: raw },
+    investigation: {
+      ...parsed!,
+      confidenceScore: composite,
+      modelConfidenceScore: modelScore,
+      signalStrength,
+      historicalSuccessRate: history,
+      category,
+      rawBedrockResponse: raw,
+    },
+    decision,
   };
 
   // Write updated state to S3 for next stage

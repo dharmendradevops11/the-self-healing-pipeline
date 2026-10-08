@@ -46,6 +46,25 @@ Parameters:
     Default: "src/,lib/,app/,packages/,server/,api/"
     Description: Comma-separated directories the AI is allowed to modify in the target repository.
 
+  PnpmWorkspaceFilter:
+    Type: String
+    Default: ""
+    Description: Optional pnpm workspace package name to run unit tests in (for example "@myorg/api"). Leave empty to run test:unit at the repository root.
+
+  ServiceRegistryJson:
+    Type: String
+    Default: "{}"
+    Description: >
+      JSON service registry used to estimate blast radius (Chapter 9). Maps a service name to
+      {"dependents": [...], "estimated_users": 1000, "handles_pii_or_payment": false,
+      "owner": "team", "oncall": "person-or-rotation"}.
+
+  UnknownServiceTier:
+    Type: String
+    Default: medium
+    AllowedValues: [low, medium, high, critical]
+    Description: Blast-radius tier assumed for a service that is missing from the registry.
+
   GitAuthorEmail:
     Type: String
     Default: "healer@example.com"
@@ -77,6 +96,10 @@ Parameters:
     Type: String
     Description: ECR URI for the healer Fargate task image.
 
+Conditions:
+  HasSentryWebhookSecret: !Not [!Equals [!Ref SentryWebhookSecretArn, ""]]
+  HasSentryAuthSecret: !Not [!Equals [!Ref SentryAuthTokenSecretArn, ""]]
+
 Resources:
   AuditBucket:
     Type: AWS::S3::Bucket
@@ -100,6 +123,27 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+
+  AgentTrustLedger:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${ProjectName}-${Environment}-agent-trust-ledger
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: execution_id, AttributeType: S }
+        - { AttributeName: category, AttributeType: S }
+        - { AttributeName: timestamp, AttributeType: S }
+      KeySchema:
+        - { AttributeName: execution_id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: category-timestamp-index
+          KeySchema:
+            - { AttributeName: category, KeyType: HASH }
+            - { AttributeName: timestamp, KeyType: RANGE }
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
   HealerTriggerTopic:
     Type: AWS::SNS::Topic
@@ -167,8 +211,28 @@ Resources:
                 Action: [s3:PutObject, s3:GetObject]
                 Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-healer-audit/*
               - Effect: Allow
-                Action: [dynamodb:GetItem, dynamodb:PutItem]
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem]
                 Resource: !GetAtt RateLimitTable.Arn
+              - Effect: Allow
+                Action: [dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:Query]
+                Resource:
+                  - !GetAtt AgentTrustLedger.Arn
+                  - !Sub ${AgentTrustLedger.Arn}/index/category-timestamp-index
+              - Effect: Allow
+                Action: [s3:ListBucket]
+                Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-healer-audit
+              - !If
+                - HasSentryWebhookSecret
+                - Effect: Allow
+                  Action: [secretsmanager:GetSecretValue]
+                  Resource: !Ref SentryWebhookSecretArn
+                - !Ref AWS::NoValue
+              - !If
+                - HasSentryAuthSecret
+                - Effect: Allow
+                  Action: [secretsmanager:GetSecretValue]
+                  Resource: !Ref SentryAuthTokenSecretArn
+                - !Ref AWS::NoValue
               - Effect: Allow
                 Action: [sns:Publish]
                 Resource: !Ref HealerTriggerTopic
@@ -201,6 +265,12 @@ Resources:
               - Effect: Allow
                 Action: [s3:PutObject, s3:GetObject]
                 Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-healer-audit/*
+              - Effect: Allow
+                Action: [s3:ListBucket]
+                Resource: !Sub arn:aws:s3:::${ProjectName}-${Environment}-healer-audit
+              - Effect: Allow
+                Action: [dynamodb:Query]
+                Resource: !Sub ${AgentTrustLedger.Arn}/index/category-timestamp-index
               - Effect: Allow
                 Action: [secretsmanager:GetSecretValue]
                 Resource: !Ref GithubTokenSecretArn
@@ -405,6 +475,9 @@ Resources:
             - { Name: BEDROCK_MODEL_ID, Value: !Ref BedrockModelId }
             - { Name: BEDROCK_REGION, Value: !Ref BedrockRegion }
             - { Name: HEALER_AUDIT_BUCKET, Value: !Ref AuditBucket }
+            - { Name: HEALER_TRUST_LEDGER_TABLE, Value: !Ref AgentTrustLedger }
+            - { Name: HEALER_SERVICE_REGISTRY, Value: !Ref ServiceRegistryJson }
+            - { Name: HEALER_UNKNOWN_SERVICE_TIER, Value: !Ref UnknownServiceTier }
             - {
                 Name: GITHUB_REPO_URL,
                 Value: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepoName}.git",
@@ -470,11 +543,13 @@ Resources:
           Command: ["node", "tasks/test/run.js"]
           Essential: true
           Environment:
+            - { Name: HEALER_AUDIT_BUCKET, Value: !Ref AuditBucket }
             - {
                 Name: GITHUB_REPO_URL,
                 Value: !Sub "https://github.com/${GithubRepoOwner}/${GithubRepoName}.git",
               }
             - { Name: GITHUB_BASE_BRANCH, Value: !Ref GithubBaseBranch }
+            - { Name: HEALER_PNPM_FILTER, Value: !Ref PnpmWorkspaceFilter }
           Secrets:
             - { Name: GITHUB_TOKEN, ValueFrom: !Ref GithubTokenSecretArn }
           LogConfiguration:
@@ -498,6 +573,7 @@ Resources:
           GITHUB_REPO_NAME: !Ref GithubRepoName
           GITHUB_BASE_BRANCH: !Ref GithubBaseBranch
           HEALER_AUDIT_BUCKET: !Ref AuditBucket
+          HEALER_TRUST_LEDGER_TABLE: !Ref AgentTrustLedger
           # ARN reference — token fetched at invocation time via SDK (not stored plaintext)
           GITHUB_TOKEN_SECRET_ARN: !Ref GithubTokenSecretArn
       Code:

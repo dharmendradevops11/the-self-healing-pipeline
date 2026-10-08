@@ -124,11 +124,19 @@ ECR=YOUR_ACCOUNT_ID.dkr.ecr.YOUR_REGION.amazonaws.com/YOUR_PROJECT/healer
 aws ecr get-login-password --region YOUR_REGION | \
   docker login --username AWS --password-stdin $ECR
 
-docker build -t $ECR:latest infrastructure/healer/
+# Build for linux/amd64 (Fargate default). Required on Apple Silicon Macs.
+docker build --platform linux/amd64 -t $ECR:latest infrastructure/healer/
 docker push $ECR:latest
 ```
 
 ### 6. Package Lambda zips & upload to S3
+
+The stack reads Lambda code from a bucket that **must already exist**. It is not created by the template, and its name is fixed:
+`YOUR_PROJECT-ENVIRONMENT-lambda-zips-YOUR_ACCOUNT_ID` (for example `myapp-dev-lambda-zips-123456789012`).
+
+```bash
+aws s3 mb s3://YOUR_PROJECT-dev-lambda-zips-YOUR_ACCOUNT_ID --region YOUR_REGION
+```
 
 ```bash
 cd infrastructure/healer/dist/lambdas
@@ -139,7 +147,7 @@ import zipfile
 with zipfile.ZipFile('$f.zip', 'w', zipfile.ZIP_DEFLATED) as z:
     z.write('$f/index.js', 'index.js')
 "
-  aws s3 cp $f.zip s3://YOUR_BUCKET/healer/lambdas/$f.zip
+  aws s3 cp $f.zip s3://YOUR_PROJECT-dev-lambda-zips-YOUR_ACCOUNT_ID/healer/lambdas/$f.zip
 done
 ```
 
@@ -175,6 +183,9 @@ aws cloudformation deploy \
     GithubRepoOwner="YOUR_GITHUB_ORG" \
     GithubRepoName="YOUR_REPO" \
     SafePathPrefixes="src/,lib/" \
+    PnpmWorkspaceFilter="" \
+    ServiceRegistryJson='{"YOUR_SERVICE":{"estimated_users":1000,"owner":"your-team","oncall":"your-oncall"}}' \
+    UnknownServiceTier="medium" \
     GitAuthorEmail="healer@your-domain.com" \
     GithubBaseBranch="main" \
     SlackWebhookUrl="https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK" \
