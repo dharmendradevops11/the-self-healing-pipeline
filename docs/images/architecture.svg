@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 790" width="1200" height="790" role="img" aria-labelledby="t d">
+<title id="t">How an alert becomes a reviewed pull request</title>
+<desc id="d">Sentry sends a signed webhook through API Gateway, SNS, SQS and an EventBridge Pipe into Step Functions. INGEST, INVESTIGATE, a gate, then FIX, TEST and a pull request, or ESCALATE with a report-only pull request. NOTIFY sends Slack and SNS. A human reviews and merges, and a GitHub webhook teaches the trust ledger.</desc>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/></marker></defs>
+<rect x="1" y="1" width="1198" height="788" rx="18" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+<text x="40" y="52" text-anchor="start" font-size="28" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">How an alert becomes a reviewed pull request</text>
+<text x="40" y="80" text-anchor="start" font-size="16" font-weight="400" fill="#57606a" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Figure 2.1 of the book, with the plumbing drawn in. Nothing merges itself.</text>
+<text x="40" y="120" text-anchor="start" font-size="13" font-weight="700" fill="#6b7280" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">THE WAY IN</text>
+<rect x="55" y="132" width="170" height="92" rx="12" fill="#f3f4f6" stroke="#6b7280" stroke-width="2.4"/>
+<text x="140.0" y="176.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Sentry</text>
+<text x="140.0" y="198.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">error event</text>
+<rect x="285" y="132" width="170" height="92" rx="12" fill="#fff4e0" stroke="#e08a00" stroke-width="2.4"/>
+<text x="370.0" y="167.0" text-anchor="middle" font-size="18" font-weight="700" fill="#7a4a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">API Gateway</text>
+<text x="370.0" y="189.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">+ webhook Lambda</text>
+<text x="370.0" y="207.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">verifies signature</text>
+<path d="M225 178.0 L285 178.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="515" y="132" width="170" height="92" rx="12" fill="#f3f4f6" stroke="#6b7280" stroke-width="2.4"/>
+<text x="600.0" y="176.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">SNS</text>
+<text x="600.0" y="198.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">fan-out</text>
+<path d="M455 178.0 L515 178.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="745" y="132" width="170" height="92" rx="12" fill="#f3f4f6" stroke="#6b7280" stroke-width="2.4"/>
+<text x="830.0" y="176.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">SQS</text>
+<text x="830.0" y="198.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">+ dead-letter queue</text>
+<path d="M685 178.0 L745 178.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="975" y="132" width="170" height="92" rx="12" fill="#f3f4f6" stroke="#6b7280" stroke-width="2.4"/>
+<text x="1060.0" y="176.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">EventBridge Pipe</text>
+<text x="1060.0" y="198.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">the Trigger</text>
+<path d="M915 178.0 L975 178.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<polyline points="1060.0,224 1060.0,262" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="30" y="245" width="1140" height="350" rx="16" fill="#faf8ff" stroke="#9575cd" stroke-width="2.2" stroke-dasharray="8 6"/>
+<text x="48" y="272" text-anchor="start" font-size="13" font-weight="700" fill="#6b46c1" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">AWS STEP FUNCTIONS  ·  one run per alert, every state visible in the console</text>
+<rect x="50" y="296" width="150" height="108" rx="12" fill="#fff4e0" stroke="#e08a00" stroke-width="2.4"/>
+<text x="125.0" y="320.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#e08a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">1 · LAMBDA</text>
+<text x="125.0" y="346" text-anchor="middle" font-size="18" font-weight="700" fill="#7a4a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">INGEST</text>
+<text x="125.0" y="368" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">dedupe, rate limit,</text>
+<text x="125.0" y="386" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">last 20 log lines</text>
+<rect x="240" y="296" width="150" height="108" rx="12" fill="#e6f1fd" stroke="#1f7ae0" stroke-width="2.4"/>
+<text x="315.0" y="320.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f7ae0" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">2 · FARGATE</text>
+<text x="315.0" y="346" text-anchor="middle" font-size="18" font-weight="700" fill="#0b3d78" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">INVESTIGATE</text>
+<text x="315.0" y="368" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">clone, read files,</text>
+<text x="315.0" y="386" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">ask the model</text>
+<path d="M200 350.0 L240 350.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<path d="M390 350.0 L418 350.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<polygon points="488,282.0 560,350.0 488,418.0 416,350.0" fill="#efe9fb" stroke="#7c3aed" stroke-width="2.4"/>
+<text x="488" y="344.0" text-anchor="middle" font-size="17" font-weight="700" fill="#3b1a80" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">GATE</text>
+<text x="488" y="364.0" text-anchor="middle" font-size="12" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">score × blast radius</text>
+<rect x="620" y="296" width="150" height="108" rx="12" fill="#e6f1fd" stroke="#1f7ae0" stroke-width="2.4"/>
+<text x="695.0" y="320.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f7ae0" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">3 · FARGATE</text>
+<text x="695.0" y="346" text-anchor="middle" font-size="18" font-weight="700" fill="#0b3d78" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">FIX</text>
+<text x="695.0" y="368" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">patch on a</text>
+<text x="695.0" y="386" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">healer/ branch</text>
+<path d="M560 350.0 L620 350.0" stroke="#2e8b4f" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<text x="590" y="338.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2e8b4f" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">allowed</text>
+<rect x="810" y="296" width="150" height="108" rx="12" fill="#e6f1fd" stroke="#1f7ae0" stroke-width="2.4"/>
+<text x="885.0" y="320.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f7ae0" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">3 · FARGATE</text>
+<text x="885.0" y="346" text-anchor="middle" font-size="18" font-weight="700" fill="#0b3d78" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">TEST</text>
+<text x="885.0" y="368" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">type-check,</text>
+<text x="885.0" y="386" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">tests, lint</text>
+<path d="M770 350.0 L810 350.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="990" y="296" width="160" height="108" rx="12" fill="#fff4e0" stroke="#e08a00" stroke-width="2.4"/>
+<text x="1070.0" y="320.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#e08a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">4 · LAMBDA</text>
+<text x="1070.0" y="346" text-anchor="middle" font-size="18" font-weight="700" fill="#7a4a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">PULL REQUEST</text>
+<text x="1070.0" y="368" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">fix PR with a</text>
+<text x="1070.0" y="386" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">reviewer packet</text>
+<path d="M960 350.0 L990 350.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="620" y="452" width="170" height="112" rx="12" fill="#fdeceb" stroke="#d93025" stroke-width="2.4"/>
+<text x="705.0" y="476.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#d93025" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">LAMBDA</text>
+<text x="705.0" y="502" text-anchor="middle" font-size="18" font-weight="700" fill="#7a1510" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">ESCALATE</text>
+<text x="705.0" y="524" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">report-only PR</text>
+<text x="705.0" y="542" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">HEALER_REPORT.md</text>
+<polyline points="488,418.0 488,508 620,508" stroke="#d93025" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<text x="502" y="496" text-anchor="start" font-size="13" font-weight="700" fill="#d93025" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">below the line: no fix</text>
+<rect x="990" y="452" width="160" height="112" rx="12" fill="#fff4e0" stroke="#e08a00" stroke-width="2.4"/>
+<text x="1070.0" y="476.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#e08a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">LAMBDA</text>
+<text x="1070.0" y="502" text-anchor="middle" font-size="18" font-weight="700" fill="#7a4a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">NOTIFY</text>
+<text x="1070.0" y="524" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Slack + SNS by</text>
+<text x="1070.0" y="542" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">escalation tier</text>
+<path d="M1070 404 L1070 452" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<path d="M790 508 L990 508" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<text x="40" y="640" text-anchor="start" font-size="13" font-weight="700" fill="#6b7280" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">AFTER THE PULL REQUEST  ·  no code performs this part</text>
+<polyline points="1070,564 1070,664" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="975" y="664" width="190" height="100" rx="12" fill="#e7f6ec" stroke="#2e8b4f" stroke-width="2.4"/>
+<text x="1070.0" y="688.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2e8b4f" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">REVIEW</text>
+<text x="1070.0" y="714" text-anchor="middle" font-size="18" font-weight="700" fill="#14532d" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">A HUMAN</text>
+<text x="1070.0" y="736" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">reads the PR, then</text>
+<text x="1070.0" y="754" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">merges or closes it</text>
+<rect x="715" y="664" width="190" height="100" rx="12" fill="#f3f4f6" stroke="#6b7280" stroke-width="2.4"/>
+<text x="810.0" y="703.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">GITHUB WEBHOOK</text>
+<text x="810.0" y="725.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">tells the pipeline</text>
+<text x="810.0" y="743.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">what you decided</text>
+<rect x="455" y="664" width="190" height="100" rx="12" fill="#efe9fb" stroke="#7c3aed" stroke-width="2.4"/>
+<text x="550.0" y="703.0" text-anchor="middle" font-size="18" font-weight="700" fill="#3b1a80" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">TRUST LEDGER</text>
+<text x="550.0" y="725.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">approved, modified</text>
+<text x="550.0" y="743.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">or rejected</text>
+<path d="M975 714 L905 714" stroke="#2e8b4f" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<path d="M715 714 L645 714" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
+<rect x="40" y="660" width="15" height="15" rx="3" fill="#fff4e0" stroke="#e08a00" stroke-width="1.8"/>
+<text x="63" y="672.0" text-anchor="start" font-size="13.5" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Lambda</text>
+<rect x="40" y="680" width="15" height="15" rx="3" fill="#e6f1fd" stroke="#1f7ae0" stroke-width="1.8"/>
+<text x="63" y="692.0" text-anchor="start" font-size="13.5" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Fargate task</text>
+<rect x="40" y="700" width="15" height="15" rx="3" fill="#efe9fb" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="63" y="712.0" text-anchor="start" font-size="13.5" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Gate and memory</text>
+<rect x="40" y="720" width="15" height="15" rx="3" fill="#fdeceb" stroke="#d93025" stroke-width="1.8"/>
+<text x="63" y="732.0" text-anchor="start" font-size="13.5" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Escalation</text>
+<rect x="40" y="740" width="15" height="15" rx="3" fill="#e7f6ec" stroke="#2e8b4f" stroke-width="1.8"/>
+<text x="63" y="752.0" text-anchor="start" font-size="13.5" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Human</text>
+<rect x="40" y="760" width="15" height="15" rx="3" fill="#f3f4f6" stroke="#6b7280" stroke-width="1.8"/>
+<text x="63" y="772.0" text-anchor="start" font-size="13.5" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Plumbing</text>
+</svg>

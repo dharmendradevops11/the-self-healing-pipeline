@@ -75,35 +75,13 @@ There are eight guided experiments in **[docs/experiments.md](docs/experiments.m
 
 ## How it works
 
-The architecture is Figure 2.1 of the book, with the plumbing the figure leaves out drawn in. First, **the way in**: an alert is verified,
-buffered and handed to a workflow.
+The architecture is Figure 2.1 of the book, with the plumbing the figure leaves out drawn in: an alert is verified, buffered and
+handed to a workflow (top), the workflow investigates and then either proposes a fix or escalates (middle), and a person decides
+(bottom). Every box inside the dashed frame is a Step Functions state you can click on in the AWS console.
 
-```mermaid
-flowchart LR
-    S["Sentry<br/>error event"] --> AG["API Gateway<br/>+ webhook Lambda<br/>verifies the signature"]
-    AG --> SNS["SNS<br/>fan-out"] --> SQS["SQS<br/>+ dead-letter queue"] --> PIPE["EventBridge Pipe<br/>the Trigger"] --> SF["Step Functions<br/>one run per alert"]
-```
-
-Then **inside Step Functions**, where every box is a state you can click on in the console:
-
-```mermaid
-flowchart LR
-    I["1 INGEST<br/>Lambda<br/>dedupe, rate limit,<br/>last 20 log lines"] --> V["2 INVESTIGATE<br/>Fargate<br/>clone, read,<br/>ask the model"]
-    V --> G{"Gate<br/>score x<br/>blast radius"}
-    G -->|"fix allowed"| F["3 FIX<br/>Fargate<br/>patch on a<br/>healer/ branch"]
-    F --> T["3 TEST<br/>Fargate<br/>type-check,<br/>tests, lint"]
-    T --> PR["4 PR<br/>Lambda<br/>fix PR with a<br/>reviewer packet"]
-    G -->|"below the line"| E["ESCALATE<br/>Lambda<br/>report-only PR"]
-    PR --> N["NOTIFY<br/>Slack + SNS"]
-    E --> N
-```
-
-And **after the pull request**, which is the part no code performs:
-
-```mermaid
-flowchart LR
-    N["Slack message<br/>with the PR link"] --> H["A human reads it<br/>and merges or closes"] --> W["GitHub webhook"] --> L["The trust ledger records<br/>approved, modified or rejected"]
-```
+<p align="center">
+  <img src="docs/images/architecture.svg" alt="Architecture: Sentry, API Gateway, SNS, SQS and an EventBridge Pipe start a Step Functions run. INGEST, INVESTIGATE and a gate lead to FIX, TEST and a pull request, or to ESCALATE with a report-only pull request. NOTIFY sends Slack and SNS. A human reviews and merges, and a GitHub webhook teaches the trust ledger." width="100%">
+</p>
 
 **The gate is the heart of it.** The model's own confidence is never trusted alone (Chapter 9):
 
