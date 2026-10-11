@@ -108,7 +108,7 @@ Ch. 17 prerequisites also name a primary, a complex-case fallback and a quick-an
 | KMS trap: grant `kms:Decrypt` + `kms:DescribeKey` next to `GetSecretValue` | 🟡 stack uses the AWS-managed key; the trap is explained in `docs/troubleshooting.md` |
 | IAM roles per Appendix F: `Healer-Ingest-Role` (logs:FilterLogEvents, sns:Publish, scoped log groups), `Healer-Investigate-Role` (bedrock:InvokeModel, s3:GetObject), `Healer-Remediate-Role` (ssm:SendCommand, ecs:UpdateService, only `healer-eligible=true` tag), `Healer-Audit-Logger-Role` (s3:PutObject only, **denies s3:DeleteObject**) | ✅ `Healer-Ingest-Role`, `Healer-Investigate-Role`, `Healer-Remediate-Role` (acts only on `healer-eligible=true`; code in `healer/remediate/`), plus `Healer-Fix-Role` and `Healer-Test-Role`. Every role is denied `s3:DeleteObject` on the audit bucket and the Ch. 11 hard limits. The audit-logger duty is done by each stage |
 | Audit bucket: versioned, private, TLS only, Object Lock **GOVERNANCE**, never bypass on teardown | ✅ optional Object Lock in `state_stack.py` |
-| Fine-grained GitHub PAT (Contents RW, Pull requests RW, Metadata R), 90-day expiry, machine user | ✅ [infra/policies](../infra/policies/README.md) and `docs/deploy.md` |
+| Fine-grained GitHub PAT (Contents RW, Pull requests RW, Metadata R), 90-day expiry, machine user | ✅ [infra/policies](../infra/policies) and `docs/deploy.md` |
 | Compliance record: `approved_by` is never the agent | ✅ `healer/ledger/compliance.py` |
 
 ## 6. Data stores and names
