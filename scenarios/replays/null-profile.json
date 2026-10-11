@@ -1,0 +1,24 @@
+[
+  {
+    "when": "You are investigating a production error",
+    "reply": {
+      "rootCauseHypothesis": "get_display_name in src/auth.py dereferences session.user.profile, which is None for first-time OAuth users, so .name raises AttributeError.",
+      "confidenceScore": 93,
+      "evidenceSummary": "The stack trace points at src/auth.py line 24, and the code reads session.user.profile.name with no None check. The Profile field is Optional.",
+      "affectedFiles": [
+        "src/auth.py"
+      ]
+    }
+  },
+  {
+    "when": "You are fixing a production bug",
+    "reply": {
+      "type": "code-fix",
+      "diff": "diff --git a/src/auth.py b/src/auth.py\nindex b785914..af3531f 100644\n--- a/src/auth.py\n+++ b/src/auth.py\n@@ -20,8 +20,9 @@ class Session:\n \n \n def get_display_name(session: Session) -> str:\n-    # First OAuth login: new users have no profile yet. This line crashes for them.\n-    return session.user.profile.name.strip()  # type: ignore[union-attr]\n+    # First OAuth login: new users have no profile yet, so fall back to a default name.\n+    profile = session.user.profile\n+    return profile.name.strip() if profile else \"there\"\n \n \n def greet(session: Session) -> str:\n",
+      "affectedFiles": [
+        "src/auth.py"
+      ],
+      "explanation": "Return a default name when the user has no profile yet, instead of dereferencing None."
+    }
+  }
+]

@@ -1,0 +1,5 @@
+# Explicit, so the demo lints the same on every machine (a user-level ruff config would otherwise apply).
+line-length = 100
+
+[lint]
+select = ["E", "F"]

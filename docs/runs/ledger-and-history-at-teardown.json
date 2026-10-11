@@ -1,0 +1,398 @@
+{
+  "TrustLedger": [
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-3139b945",
+      "timestamp": "2026-10-09T18:09:33.071814+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access session.user.profile.name without checking if profile is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-277fd118",
+      "timestamp": "2026-10-09T18:16:54.632159+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the get_display_name() function attempts to access session.user.profile.name without checking if profile is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-5bd72df6",
+      "timestamp": "2026-10-09T18:22:21.410842+00:00",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access `session.user.profile.name` without checking if `profile` is None. When new OAuth users log in for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "category": "crash:AttributeError",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-73ff3286",
+      "timestamp": "2026-10-09T18:26:11.105218+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new users login via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-7b31d8bd",
+      "timestamp": "2026-10-09T18:37:24.644999+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-4fb06009",
+      "timestamp": "2026-10-09T19:06:11.171435+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When a new user logs in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-151acb9e",
+      "timestamp": "2026-10-09T19:25:45.051934+00:00",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new OAuth users login for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "category": "crash:AttributeError",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-48e75993",
+      "timestamp": "2026-10-09T20:12:09.835653+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the get_display_name() function attempts to access session.user.profile.name without checking if profile is None. When new OAuth users log in for the first time, they have no profile yet (profile is Optional[Profile] = None), causing an AttributeError when .name is accessed on NoneType.",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-636893ba",
+      "timestamp": "2026-10-09T20:12:14.680426+00:00",
+      "hypothesis": "In src/auth.py line 21, get_display_name() attempts to access session.user.profile.name without checking if profile is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing the AttributeError when trying to access .name on a NoneType object.",
+      "category": "crash:AttributeError",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-18c81a71",
+      "timestamp": "2026-10-09T20:16:50.756478+00:00",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access session.user.profile.name without checking if profile is None. New users created via OAuth login have profile=None, causing an AttributeError when .name is accessed on NoneType.",
+      "category": "crash:AttributeError",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-62698225",
+      "timestamp": "2026-10-09T20:33:40.931544+00:00",
+      "hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on a NoneType object.",
+      "category": "crash:AttributeError",
+      "confidence_score": 82
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-810f0a1b",
+      "timestamp": "2026-10-09T20:49:59.794977+00:00",
+      "hypothesis": "In src/auth.py line 24, get_display_name() attempts to access session.user.profile.name without checking if profile is None. For new OAuth users (like user=2041), the profile field is None, causing an AttributeError when .name is accessed.",
+      "category": "crash:AttributeError",
+      "confidence_score": 91
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-4898e06c",
+      "timestamp": "2026-10-09T20:56:20.334696+00:00",
+      "hypothesis": "The error 'something went wrong (escalate test 155419)' is likely caused by a deliberate bug introduced in commit 1d693ba by Dharmendra Ahuja on 2026-10-09. The commit message explicitly states 'Demo app with one deliberate bug', which directly correlates with the production error occurring after this deployment.",
+      "category": "crash:unknown",
+      "confidence_score": 58
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "approved",
+      "execution_id": "exec-ec2eb471",
+      "timestamp": "2026-10-09T21:13:44.350676+00:00",
+      "category": "crash:AttributeError",
+      "hypothesis": "In src/auth.py line 24, the get_display_name() function attempts to access session.user.profile.name without checking if profile is None. When first-time OAuth users log in, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "confidence_score": 91
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-633686c4",
+      "timestamp": "2026-10-09T21:24:18.764158+00:00",
+      "hypothesis": "A deliberate bug was introduced in commit 1d693ba by Dharmendra Ahuja on 2026-10-09. The error message 'something went wrong (escalate slack test 162232)' appears to be a test error that was deployed to production. The specific file and line cannot be determined from the available information.",
+      "category": "crash:unknown",
+      "confidence_score": 53
+    },
+    {
+      "fix_worked": null,
+      "human_verdict": "pending",
+      "execution_id": "exec-522182e6",
+      "timestamp": "2026-10-09T21:36:13.494892+00:00",
+      "hypothesis": "In src/auth.py line 24-26, get_display_name() has a logic error. When session.user.profile is None (first-time OAuth users), the function returns 'there' as expected. However, the error indicates profile lookup returned None for user=2041, yet the code still attempted to access .name attribute. This suggests the None check may have been bypassed or the profile became None through a different code path. Looking at the recent deployment (commit cef2844, PR #19 'self-healing fix for null profile'), this was supposed to fix null profile handling but appears to have introduced or failed to address this issue.",
+      "category": "crash:AttributeError",
+      "confidence_score": 85
+    }
+  ],
+  "RemediationHistory": [
+    {
+      "service": "demo-app",
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access session.user.profile.name without checking if profile is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "human_decision": null,
+      "created_at": "2026-10-09T18:09:33.128155+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-3139b945",
+      "test_results": {
+        "type_check": "pass",
+        "unit": "fail",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "root_cause_hypothesis": "In src/auth.py line 24, the get_display_name() function attempts to access session.user.profile.name without checking if profile is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "service": "demo-app",
+      "human_decision": null,
+      "time_to_pr_seconds": null,
+      "created_at": "2026-10-09T18:16:54.684015+00:00",
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-277fd118",
+      "test_results": {
+        "unit": "fail",
+        "type_check": "pass",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "service": "demo-app",
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access `session.user.profile.name` without checking if `profile` is None. When new OAuth users log in for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "human_decision": null,
+      "time_to_pr_seconds": null,
+      "created_at": "2026-10-09T18:22:21.470529+00:00",
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-5bd72df6",
+      "test_results": {
+        "unit": "fail",
+        "type_check": "pass",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "service": "demo-app",
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new users login via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "human_decision": null,
+      "time_to_pr_seconds": null,
+      "created_at": "2026-10-09T18:26:11.160101+00:00",
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-73ff3286",
+      "test_results": {
+        "lint": "pass",
+        "type_check": "pass",
+        "unit": "fail"
+      },
+      "recurrence_of": null
+    },
+    {
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "service": "demo-app",
+      "human_decision": null,
+      "created_at": "2026-10-09T18:37:24.699300+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-7b31d8bd",
+      "test_results": {
+        "unit": "fail",
+        "lint": "pass",
+        "type_check": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When a new user logs in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "service": "demo-app",
+      "human_decision": null,
+      "time_to_pr_seconds": null,
+      "created_at": "2026-10-09T19:06:11.221179+00:00",
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-4fb06009",
+      "test_results": {
+        "type_check": "pass",
+        "unit": "pass",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "service": "demo-app",
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new OAuth users login for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "human_decision": null,
+      "time_to_pr_seconds": null,
+      "created_at": "2026-10-09T19:25:45.110621+00:00",
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-151acb9e",
+      "test_results": {
+        "lint": "pass",
+        "type_check": "pass",
+        "unit": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "root_cause_hypothesis": "In src/auth.py line 24, the get_display_name() function attempts to access session.user.profile.name without checking if profile is None. When new OAuth users log in for the first time, they have no profile yet (profile is Optional[Profile] = None), causing an AttributeError when .name is accessed on NoneType.",
+      "service": "<project-id>",
+      "human_decision": null,
+      "created_at": "2026-10-09T20:12:09.881974+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-48e75993",
+      "test_results": {
+        "lint": "pass",
+        "unit": "pass",
+        "type_check": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "service": "python",
+      "root_cause_hypothesis": "In src/auth.py line 21, get_display_name() attempts to access session.user.profile.name without checking if profile is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing the AttributeError when trying to access .name on a NoneType object.",
+      "human_decision": null,
+      "created_at": "2026-10-09T20:12:14.687369+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-636893ba",
+      "test_results": {
+        "unit": "pass",
+        "type_check": "pass",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "service": "demo-app",
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access session.user.profile.name without checking if profile is None. New users created via OAuth login have profile=None, causing an AttributeError when .name is accessed on NoneType.",
+      "human_decision": null,
+      "created_at": "2026-10-09T20:16:50.805172+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-18c81a71",
+      "test_results": {
+        "unit": "pass",
+        "type_check": "pass",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "service": "demo-app",
+      "root_cause_hypothesis": "In src/auth.py line 24, the code attempts to access 'session.user.profile.name' without checking if 'profile' is None. When new users log in via OAuth for the first time, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on a NoneType object.",
+      "human_decision": null,
+      "created_at": "2026-10-09T20:33:40.989741+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 82,
+      "incident_id": "exec-62698225",
+      "test_results": {
+        "lint": "pass",
+        "type_check": "pass",
+        "unit": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "root_cause_hypothesis": "In src/auth.py line 24, get_display_name() attempts to access session.user.profile.name without checking if profile is None. For new OAuth users (like user=2041), the profile field is None, causing an AttributeError when .name is accessed.",
+      "service": "demo-app",
+      "human_decision": null,
+      "time_to_pr_seconds": null,
+      "created_at": "2026-10-09T20:49:59.851623+00:00",
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "remediation_type": "repair",
+      "confidence_score": 91,
+      "incident_id": "exec-810f0a1b",
+      "test_results": {
+        "type_check": "pass",
+        "unit": "pass",
+        "lint": "pass"
+      },
+      "recurrence_of": null
+    },
+    {
+      "root_cause_hypothesis": "In src/auth.py line 24, the get_display_name() function attempts to access session.user.profile.name without checking if profile is None. When first-time OAuth users log in, they have no profile yet (profile=None), causing an AttributeError when trying to access the 'name' attribute on NoneType.",
+      "service": "demo-app",
+      "human_decision": "merged",
+      "created_at": "2026-10-09T21:13:44.393925+00:00",
+      "time_to_pr_seconds": null,
+      "files_changed": [
+        "src/auth.py"
+      ],
+      "rejection_reason": "",
+      "remediation_type": "repair",
+      "confidence_score": 91,
+      "incident_id": "exec-ec2eb471",
+      "test_results": {
+        "unit": "pass",
+        "lint": "pass",
+        "type_check": "pass"
+      },
+      "recurrence_of": null
+    }
+  ]
+}

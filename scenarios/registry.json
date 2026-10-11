@@ -1,0 +1,9 @@
+{
+  "demo-app": {
+    "estimated_users": 1200,
+    "handles_pii_or_payment": false,
+    "owner": "platform-team",
+    "oncall": "platform-oncall",
+    "dependents": []
+  }
+}

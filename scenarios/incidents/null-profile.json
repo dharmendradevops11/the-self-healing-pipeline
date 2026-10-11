@@ -1,0 +1,11 @@
+{
+  "source": "manual",
+  "severity": "high",
+  "type": "crash",
+  "title": "AttributeError: 'NoneType' object has no attribute 'name'",
+  "stackTrace": "AttributeError: 'NoneType' object has no attribute 'name'\n  File \"src/auth.py\", line 24, in get_display_name\n  File \"src/auth.py\", line 28, in greet",
+  "affectedService": "demo-app",
+  "cloudwatchLogGroup": "/ecs/demo-app",
+  "triggeredAt": "2026-10-09T12:00:00Z",
+  "logs": "2026-10-09T11:59:40Z INFO request 40 ok\n2026-10-09T11:59:41Z INFO request 41 ok\n2026-10-09T11:59:42Z INFO request 42 ok\n2026-10-09T11:59:43Z INFO request 43 ok\n2026-10-09T11:59:44Z INFO request 44 ok\n2026-10-09T11:59:45Z INFO request 45 ok\n2026-10-09T11:59:46Z INFO request 46 ok\n2026-10-09T11:59:47Z INFO request 47 ok\n2026-10-09T11:59:48Z INFO request 48 ok\n2026-10-09T11:59:49Z INFO request 49 ok\n2026-10-09T11:59:50Z INFO request 50 ok\n2026-10-09T11:59:51Z INFO request 51 ok\n2026-10-09T11:59:52Z INFO request 52 ok\n2026-10-09T11:59:53Z INFO request 53 ok\n2026-10-09T11:59:54Z INFO request 54 ok\n2026-10-09T11:59:55Z INFO request 55 ok\n2026-10-09T11:59:56Z INFO request 56 ok\n2026-10-09T11:59:57Z INFO request 57 ok\n2026-10-09T11:59:58Z ERROR AttributeError: 'NoneType' object has no attribute 'name'\n2026-10-09T11:59:59Z ERROR request failed for first-time user"
+}
