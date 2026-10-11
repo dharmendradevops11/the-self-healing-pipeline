@@ -54,6 +54,9 @@ def normalize_diff(diff: str) -> str:
     return "\n".join(out) + ("\n" if diff.endswith("\n") else "")
 
 
+_SYMLINK_MODE = re.compile(r"^(?:new file mode|old mode|new mode|index \S+ )\s*120000", re.M)
+
+
 def files_in_diff(diff: str) -> list[str]:
     """Every file path the diff actually touches (both the old and the new name).
 
@@ -96,9 +99,14 @@ def apply_remediation(
     """
     diff = normalize_diff(diff)
     touched = files_in_diff(diff)
+    if not touched:
+        return {"applied": False, "reason": "the diff names no file, so it is not a patch"}
     undeclared = [f for f in touched if f not in changed_files]
     if undeclared:
         return {"applied": False, "reason": f"diff touches undeclared files: {undeclared}"}
+
+    if _SYMLINK_MODE.search(diff):
+        return {"applied": False, "reason": "diff creates or changes a symbolic link"}
 
     unsafe = [f for f in dict.fromkeys([*changed_files, *touched]) if not is_remediable(f)]
     if unsafe:

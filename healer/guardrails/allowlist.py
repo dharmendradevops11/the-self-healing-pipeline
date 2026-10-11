@@ -36,17 +36,34 @@ EXTENDED_FORBIDDEN_PATH_PATTERNS = [
 ]
 
 
+def _is_inside_repo(file_path: str) -> bool:
+    """False for absolute paths, `..` segments, backslashes, NUL bytes and `./` detours."""
+    if not file_path or "\x00" in file_path or "\\" in file_path or file_path.startswith("/"):
+        return False
+    parts = file_path.split("/")
+    return ".." not in parts and "." not in parts and "" not in parts
+
+
+def check_path(
+    file_path: str, safe_prefixes: Iterable[str], forbidden_patterns: Iterable[str]
+) -> str | None:
+    """The one policy. Returns why a path is refused, or None when automation may touch it."""
+    if not _is_inside_repo(file_path):
+        return f"path escapes the repository: {file_path!r}"
+    if any(re.search(pattern, file_path) for pattern in forbidden_patterns):
+        return f"Fix touches forbidden path: {file_path}"
+    if not any(file_path.startswith(prefix) for prefix in safe_prefixes):
+        return f"Fix touches path outside allowlist: {file_path}"
+    return None
+
+
 def is_path_remediable(
     file_path: str,
     safe_prefixes: Iterable[str] = SAFE_PATH_PREFIXES,
     forbidden_patterns: Iterable[str] = FORBIDDEN_PATH_PATTERNS,
 ) -> bool:
     """True only if the path is under a safe prefix and matches no forbidden pattern."""
-    if ".." in file_path.split("/") or file_path.startswith("/"):
-        return False  # path traversal or an absolute path: never inside the repo's source tree
-    if any(re.search(pattern, file_path) for pattern in forbidden_patterns):
-        return False
-    return any(file_path.startswith(prefix) for prefix in safe_prefixes)
+    return check_path(file_path, list(safe_prefixes), list(forbidden_patterns)) is None
 
 
 def validate_fix_paths(
@@ -59,8 +76,7 @@ def validate_fix_paths(
 
     prefixes, patterns = list(safe_prefixes), list(forbidden_patterns)
     for path in changed_files:
-        if any(re.search(pattern, path) for pattern in patterns):
-            raise RemediationBlockedError(f"Fix touches forbidden path: {path}")
-        if not any(path.startswith(prefix) for prefix in prefixes):
-            raise RemediationBlockedError(f"Fix touches path outside allowlist: {path}")
+        reason = check_path(path, prefixes, patterns)
+        if reason:
+            raise RemediationBlockedError(reason)
     return True

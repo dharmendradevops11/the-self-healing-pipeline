@@ -121,7 +121,7 @@ the pull request, Slack, the ledger) with the request or log line at each step a
 | Signed, fresh, bounded webhooks | HMAC-SHA256 on the raw body, constant-time compare, a 300-second replay window, a size cap |
 | Secrets fetched at use | Never in environment variables, never in logs; rotation overlaps so nothing breaks mid-incident |
 | Least privilege with explicit denies | One IAM role per stage. No role can touch IAM, billing, table deletion, or delete the audit trail |
-| Audit trail | One file per step in a locked-down bucket; the model's prompt is not stored |
+| Audit trail | One JSON file per step in a locked-down bucket (Object Lock, Governance mode, 90 days). It holds the sanitised input and scrubbed output of each step, not the raw prompt. See [what is kept](docs/audit-retention.md) |
 | Rate limits and caps | Three investigations per service per hour, three PRs a day, duplicate alerts run once |
 | Phased rollout | Shadow mode, then supervised, then autonomous with hard limits |
 
@@ -230,6 +230,11 @@ This section is deliberately plain, because the book is.
 - **Proven on real AWS:** the webhook, the fix path, the escalate path, reviewer feedback into the ledger, shadow mode, the daily cap,
   Slack, and teardown. **Not yet exercised there:** the autonomous phase, multi-region Bedrock, and the model fallback.
 - **One repository per deployment,** and the stack trace parser is tuned to the demo app's Python and Node frames.
+- **The confidence score is a heuristic, not a probability.** The weights (30% evidence, 45% model certainty, 25% history) come from
+  the book and have not been calibrated against measured outcomes, and a model's stated certainty is not a measured chance of being
+  right. Treat 90 as "the evidence is strong", never as "90% likely correct". No precision or false-positive figures are published yet.
+- **Generated code runs only in a throwaway Fargate task** with a path allowlist, a read-only view of the tests and no production
+  credentials, but a path allowlist alone does not make arbitrary code safe to run. Keep review mandatory.
 - **The learning loop starts empty.** The history input to the confidence score only activates once a failure category has five
   resolved reviewer verdicts.
 - **Slack message and notification text** include the analysis and a link, and nothing from your secrets, but the incident text

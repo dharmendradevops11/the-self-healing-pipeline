@@ -57,7 +57,7 @@ Sentry webhook (HMAC-SHA256, constant-time, replay-protected)
 | Allowlist is checked **before** any diff reaches `git apply` | Ch. 2, 7, 17 | ✅ |
 | Model is a replaceable component (system prompt + user prompt in, structured JSON out); model ID is a **configuration parameter** | Ch. 18, App. E | ✅ `BEDROCK_MODEL_ID`, CDK context `healer:bedrock_model_id` |
 | JSON extraction tolerates fenced and bare JSON | Ch. 18 | ✅ `healer/llm`, `diagnose.py` |
-| Every Bedrock prompt and response logged to S3 with execution ID and timestamp ("Nothing happens without a record") | Ch. 18 | ✅ audit logger (see the Ch. 8 vs 18 contradiction on raw prompts, §9) |
+| Every Bedrock call recorded to S3 with execution ID and timestamp ("Nothing happens without a record") | Ch. 18 | ✅ audit logger stores the **sanitised input and scrubbed output** of each step, not the raw prompt (D5; exact retention in [audit-retention.md](audit-retention.md)) |
 | One trace/execution ID follows a failure through every stage | Ch. 14 | ✅ `execution_id` |
 | PR is the audit trail: root cause, confidence, every file read, strategy, test results | Ch. 2, 18 | ✅ `healer/pr/packet.py` |
 | No auto-merge, ever, by design (documented in Contributing guide) | Ch. 18 | ✅ no merge code exists. ✅ `CONTRIBUTING.md` |

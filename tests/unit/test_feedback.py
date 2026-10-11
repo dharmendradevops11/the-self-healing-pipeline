@@ -172,4 +172,3 @@ def test_the_webhook_logs_the_verdict_it_recorded(tables, capsys):
         "verdict": "approved",
         "reason": None,
     }
-

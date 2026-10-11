@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install (Python 3.11, the book's pinned versions)
+        run: make venv
+      - name: Lint and type-check
+        run: |
+          .venv/bin/python -m ruff check healer tests infra
+          .venv/bin/python -m ruff format --check healer tests infra
+          .venv/bin/python -m mypy healer infra
+      - name: Unit tests with coverage
+        run: .venv/bin/python -m pytest --cov=healer --cov-report=term-missing:skip-covered
+      - name: CDK synth (needs no AWS account)
+        run: |
+          export PATH="$PWD/.venv/bin:$PATH"   # cdk.json runs `python app.py`
+          npx --yes aws-cdk@2 synth --all --quiet
+        env:
+          CDK_DEFAULT_ACCOUNT: "123456789012"
+          CDK_DEFAULT_REGION: us-east-1
+      - name: Dependency audit
+        run: |
+          .venv/bin/python -m pip install pip-audit
+          .venv/bin/pip-audit -r requirements.txt || true
+
+  localstack:
+    # Separate, explicit integration job: Chapter 17 "Start Local".
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: make venv
+      - run: make local-up
+      - run: make local-test
+      - if: always()
+        run: make local-down
