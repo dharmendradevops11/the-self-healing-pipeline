@@ -1,0 +1,10 @@
+{
+  "Effect": "Allow",
+  "Action": "ecs:RunTask",
+  "Resource": "arn:aws:ecs:*:*:task-definition/healer-*:*",
+  "Condition": {
+    "StringEquals": {
+      "ecs:cluster": "arn:aws:ecs:us-east-1:123456789:cluster/prod-pipeline"
+    }
+  }
+}

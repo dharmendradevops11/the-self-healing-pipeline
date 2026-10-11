@@ -1,0 +1,8 @@
+{
+  "app": "python app.py",
+  "watch": { "include": ["**"], "exclude": ["README.md", "cdk*.json", "**/__pycache__", ".venv", "tests", "chapters"] },
+  "context": {
+    "healer:phase": "supervised",
+    "healer:bedrock_model_id": "us.anthropic.claude-sonnet-4-6"
+  }
+}

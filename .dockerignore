@@ -1,0 +1,13 @@
+.venv
+.git
+cdk.out
+**/__pycache__
+*.pyc
+chapters
+companion_code
+tests
+docs
+scenarios
+infra
+node_modules
+.healer-local

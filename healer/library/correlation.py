@@ -1,0 +1,72 @@
+"""Root cause correlation (Chapter 3, "Connecting Dots Across Systems")."""
+
+from __future__ import annotations
+
+import logging
+
+import pandas as pd
+from sklearn.ensemble import IsolationForest
+
+logger = logging.getLogger(__name__)
+
+LAG_FEATURES = ["deployment_count", "batch_jobs_active", "cache_hit_rate"]
+
+
+def detect_anomalous_patterns(
+    metrics_df: pd.DataFrame, contamination: float = 0.05
+) -> pd.DataFrame:
+    """Find unusual combinations of events that coincide with high error rates.
+
+    metrics_df has columns: timestamp, deployment_count, batch_jobs_active, cache_hit_rate,
+    error_rate, latency_p99. Rows are 10 minutes apart, so shift(6) is one hour and shift(36)
+    is six hours. `contamination` must be tuned to your environment's real anomaly rate.
+    The input frame is not modified.
+    """
+    df = metrics_df.copy()
+    for col in LAG_FEATURES:
+        df[f"{col}_lag_1h"] = df[col].shift(6)
+        df[f"{col}_lag_6h"] = df[col].shift(36)
+
+    features = [col for col in df.columns if col != "timestamp"]
+    model = IsolationForest(contamination=contamination, random_state=42)
+    df["anomaly"] = model.fit_predict(df[features].fillna(0))
+
+    incidents = df[(df["anomaly"] == -1) & (df["error_rate"] > df["error_rate"].quantile(0.90))]
+    return incidents[
+        ["timestamp", "deployment_count", "batch_jobs_active", "cache_hit_rate", "error_rate"]
+    ]
+
+
+def find_delayed_effects(
+    event_times: list[int], metric_anomalies: list[bool], max_lag_minutes: int = 60
+) -> list[tuple[int, float]]:
+    """For each time lag, measure how much more likely a metric anomaly is in the minutes
+    following an event than it is overall (lift). A lift well above 1.0 at a consistent lag
+    suggests the event precedes the anomaly."""
+    n = len(metric_anomalies)
+    if n < 10 or not event_times:
+        logger.warning("Not enough data for a meaningful lift estimate.")
+        return []
+
+    base_rate = sum(metric_anomalies) / n
+    if base_rate == 0.0:
+        logger.info("No anomalies in this series; nothing to correlate.")
+        return []
+
+    results: list[tuple[int, float]] = []
+    for lag in range(0, max_lag_minutes, 5):
+        hits = 0
+        windows = 0
+        for event_time in event_times:
+            index = event_time + lag
+            if 0 <= index < n:
+                windows += 1
+                if metric_anomalies[index]:
+                    hits += 1
+        if windows < 5:
+            continue  # too few observations at this lag to trust
+        lift = (hits / windows) / base_rate
+        if lift > 2.0:
+            results.append((lag, round(lift, 2)))
+
+    return results

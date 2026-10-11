@@ -1,0 +1,15 @@
+# Chapter 17, "Verify Everything Locally Before AWS Sees Any of It": LocalStack stands in for
+# AWS so the whole pipeline can run without an account. The book's file starts the three
+# services below; the extra ones let the notification and queue paths run locally too.
+# Version pinned to the tested matrix (Appendix E: LocalStack 3.4+).
+services:
+  localstack:
+    image: localstack/localstack:3.4.0
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,dynamodb,secretsmanager,sqs,sns,logs,sts
+      - DEBUG=1
+      - PERSISTENCE=1
+    volumes:
+      - "./localstack-data:/var/lib/localstack"

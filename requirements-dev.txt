@@ -1,0 +1,13 @@
+-r requirements.txt
+pytest>=8
+pytest-cov>=5
+moto[dynamodb,s3,sns,sqs,secretsmanager]>=5
+ruff>=0.5
+mypy>=1.10
+types-PyYAML
+types-requests
+boto3-stubs[dynamodb,s3,sns,sqs]
+# Infrastructure as code (Appendix E: AWS CDK 2.138.0+)
+aws-cdk-lib>=2.138.0
+constructs>=10
+fakeredis[lua]>=2.20

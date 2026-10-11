@@ -1,0 +1,2 @@
+# Optional. Only needed for the forecasting chapters (Ch 6). Heavy installs, so kept separate.
+prophet==1.1.5

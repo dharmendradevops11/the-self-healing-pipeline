@@ -1,0 +1,17 @@
+{
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["logs:FilterLogEvents", "cloudwatch:GetMetricData", "ecs:DescribeTasks"],
+      "Resource": [
+        "arn:aws:logs:us-east-1:111122223333:log-group:/aws/ecs/checkout-service:*",
+        "arn:aws:ecs:us-east-1:111122223333:task-definition/checkout-service:*"
+      ]
+    },
+    {
+      "Effect": "Deny",
+      "Action": ["ecs:RunTask", "ecs:UpdateService", "lambda:UpdateFunctionCode"],
+      "Resource": "*"
+    }
+  ]
+}

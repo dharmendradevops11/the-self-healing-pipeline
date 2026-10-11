@@ -1,0 +1,33 @@
+{
+  "description": "Stop random ECS tasks in checkout-service under controlled bounds",
+  "targets": {
+    "checkout-tasks": {
+      "resourceType": "aws:ecs:task",
+      "resourceArns": [
+        "arn:aws:ecs:us-east-1:111122223333:task/checkout-cluster/a1b2c3d4e5f6g7h8"
+      ],
+      "selectionMode": "PERCENT(25)"
+    }
+  },
+  "actions": {
+    "stop-tasks": {
+      "actionId": "aws:ecs:stop-task",
+      "parameters": {},
+      "targets": {
+        "Tasks": "checkout-tasks"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:111122223333:alarm:checkout-p99-latency-breach"
+    },
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:111122223333:alarm:checkout-5xx-rate-breach"
+    }
+  ],
+  "roleArn": "arn:aws:iam::111122223333:role/fis-checkout-experiment-role",
+  "tags": { "generated-by": "ai-chaos-scenario", "hypothesis-id": "chs-0417" }
+}
