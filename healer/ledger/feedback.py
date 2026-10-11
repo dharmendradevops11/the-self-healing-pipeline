@@ -49,6 +49,11 @@ def apply_pr_outcome(
         return {"ignored": "only closed pull requests carry a verdict"}
     if not str(pr.get("head", {}).get("ref", "")).startswith("healer/"):
         return {"ignored": "not a healer/ branch"}
+    head_repo = (pr.get("head", {}).get("repo") or {}).get("full_name")
+    base_repo = (pr.get("base", {}).get("repo") or {}).get("full_name")
+    if not head_repo or head_repo != base_repo:
+        # A fork can name any branch and any execution id. Only our own branches count.
+        return {"ignored": "pull request from a fork"}
     body = str(pr.get("body") or "")
     match = EXECUTION.search(body)
     if not match:

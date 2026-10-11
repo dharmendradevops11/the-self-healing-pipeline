@@ -17,10 +17,23 @@ BODY = "## Self-Healing Pipeline: Fix\n\n_Execution: `exec-abc123`_\n"
 REPORT = "## Self-Healing Pipeline: Investigation only\n\n_Execution: `exec-abc123`_\n"
 
 
-def pr_event(merged=False, commits=2, body=BODY, ref="healer/2026-10-09-x-abc123", action="closed"):
+def pr_event(
+    merged=False,
+    commits=2,
+    body=BODY,
+    ref="healer/2026-10-09-x-abc123",
+    action="closed",
+    head_repo="you/app",
+):
     return {
         "action": action,
-        "pull_request": {"head": {"ref": ref}, "merged": merged, "commits": commits, "body": body},
+        "pull_request": {
+            "head": {"ref": ref, "repo": {"full_name": head_repo}},
+            "base": {"repo": {"full_name": "you/app"}},
+            "merged": merged,
+            "commits": commits,
+            "body": body,
+        },
     }
 
 
@@ -47,6 +60,10 @@ def verdict(db):
 class TestVerdicts:
     def run(self, db, event):
         return apply_pr_outcome(db, event, trust_ledger.TABLE_NAME, remediation_history.TABLE_NAME)
+
+    def test_a_pull_request_from_a_fork_is_ignored(self, tables):
+        out = self.run(tables, pr_event(merged=True, head_repo="stranger/app"))
+        assert out == {"ignored": "pull request from a fork"}
 
     def test_a_merge_is_approval(self, tables):
         assert self.run(tables, pr_event(merged=True))["verdict"] == "approved"
@@ -155,3 +172,4 @@ def test_the_webhook_logs_the_verdict_it_recorded(tables, capsys):
         "verdict": "approved",
         "reason": None,
     }
+
