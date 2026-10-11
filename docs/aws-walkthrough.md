@@ -4,6 +4,10 @@ A real run on a real AWS account, one hop at a time, with the request or log lin
 (us-east-1). Step 1 was captured for `exec-73ff3286`; from Step 2 on the walkthrough follows `exec-7b31d8bd`, the same
 alert sent again (see the note under the status table). The account number is shown as `<account>`.
 
+> **About the pull-request links.** The runs opened their pull requests in a private demo repository, so links to
+> `healer-demo-app` will not open for you. They are kept exactly as recorded because they are part of the evidence. The
+> reviewer packet and the report-only packet are reproduced in full in this document and under [`runs/`](runs/).
+
 Same flow as Figure 2.1:
 
 ```
