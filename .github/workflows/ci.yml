@@ -30,10 +30,9 @@ jobs:
         env:
           CDK_DEFAULT_ACCOUNT: "123456789012"
           CDK_DEFAULT_REGION: us-east-1
-      - name: Dependency audit
-        run: |
-          .venv/bin/python -m pip install pip-audit
-          .venv/bin/pip-audit -r requirements.txt || true
+      - name: Dependency audit (reported, does not block: pins follow the book)
+        continue-on-error: true
+        run: uvx pip-audit -r requirements.txt
 
   localstack:
     # Separate, explicit integration job: Chapter 17 "Start Local".
