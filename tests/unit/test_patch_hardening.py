@@ -76,3 +76,16 @@ def test_a_malformed_diff_never_reaches_git(junk):
     out = apply_remediation(junk, ["src/a.py"], git)
     assert out["applied"] is False
     git.apply_patch.assert_not_called()
+
+
+def test_a_binary_file_in_the_repo_is_skipped_not_fatal(tmp_path):
+    from healer.fix.git_ops import LocalGit
+
+    (tmp_path / "x.bin").write_bytes(b"\xa7\x00\xff")
+    git = LocalGit(tmp_path)
+    try:
+        git.read_file("x.bin")
+    except UnicodeDecodeError:
+        pass  # stages catch this and move on
+    else:  # pragma: no cover
+        raise AssertionError("expected a decode error")

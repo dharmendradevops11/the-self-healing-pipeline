@@ -194,7 +194,7 @@ def investigate(state: PipelineState, s: Services) -> PipelineState:
         try:
             git.read_file(path)
             return True
-        except (OSError, PermissionError):
+        except (OSError, PermissionError, UnicodeDecodeError):  # unreadable or binary: skip
             return False
 
     state.constraint_problems = check_constraints(diagnosis.affected_files, exists)
@@ -398,14 +398,14 @@ def fix(state: PipelineState, s: Services) -> PipelineState:
     for path in diagnosis.affected_files:
         try:
             sources[path] = git.read_file(path)
-        except (OSError, PermissionError):
+        except (OSError, PermissionError, UnicodeDecodeError):  # unreadable or binary: skip
             continue
     context = fix_context(sources, diagnosis.affected_files)
     tests: dict[str, str] = {}
     for path in git.related_tests(list(context)):
         try:
             tests[path] = git.read_file(path)[:6000]  # reference only, and bounded
-        except (OSError, PermissionError):
+        except (OSError, PermissionError, UnicodeDecodeError):  # unreadable or binary: skip
             continue
     proposal = generate_fix(
         s.llm, diagnosis.root_cause_hypothesis, diagnosis.evidence_summary, context, tests
