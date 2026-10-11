@@ -1,8 +1,7 @@
+# Only the workflow actions are bumped automatically. The Python requirements are the book's
+# pinned versions (Appendix E), so they change by hand, on purpose.
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: /
-    schedule: {interval: weekly}
   - package-ecosystem: github-actions
     directory: /
     schedule: {interval: weekly}
