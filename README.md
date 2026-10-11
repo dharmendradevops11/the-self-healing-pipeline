@@ -80,7 +80,7 @@ handed to a workflow (top), the workflow investigates and then either proposes a
 (bottom). Every box inside the dashed frame is a Step Functions state you can click on in the AWS console.
 
 <p align="center">
-  <img src="docs/images/architecture.svg" alt="Architecture: Sentry, API Gateway, SNS, SQS and an EventBridge Pipe start a Step Functions run. INGEST, INVESTIGATE and a gate lead to FIX, TEST and a pull request, or to ESCALATE with a report-only pull request. NOTIFY sends Slack and SNS. A human reviews and merges, and a GitHub webhook teaches the trust ledger." width="100%">
+  <img src="docs/images/architecture.svg" alt="Architecture: Sentry, SNS, SQS and an EventBridge Pipe start a Step Functions run. INGEST, INVESTIGATE and a gate lead to FIX, TEST and a pull request, or to ESCALATE with a report-only pull request. NOTIFY sends Slack and SNS. A human reviews and merges, and a GitHub webhook teaches the trust ledger." width="100%">
 </p>
 
 **The gate is the heart of it.** The model's own confidence is never trusted alone (Chapter 9):
@@ -103,7 +103,7 @@ not to a fix generator. This was seen on real AWS: [docs/aws-walkthrough.md](doc
 |---|---|
 | Automated tests | **570+**, all offline, plus integration tests against LocalStack |
 | Real AWS runs, with every log saved | **18**, in [docs/runs/](docs/runs/) |
-| Verified on real services | Sentry, API Gateway, SNS, SQS, EventBridge, Step Functions, Lambda, Fargate, Bedrock (Claude), GitHub, Slack |
+| Verified on real services | Sentry, SNS, SQS, EventBridge, Step Functions, Lambda, Fargate, Bedrock (Claude), GitHub, Slack |
 | Bugs that only a real deployment found | **more than a dozen**, each fixed and covered by a test ([docs/aws-test-log.md](docs/aws-test-log.md)) |
 | Teardown | tested for real: the account was checked and left empty |
 

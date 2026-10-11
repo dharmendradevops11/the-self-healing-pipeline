@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 790" width="1200" height="790" role="img" aria-labelledby="t d">
 <title id="t">How an alert becomes a reviewed pull request</title>
-<desc id="d">Sentry sends a signed webhook through API Gateway, SNS, SQS and an EventBridge Pipe into Step Functions. INGEST, INVESTIGATE, a gate, then FIX, TEST and a pull request, or ESCALATE with a report-only pull request. NOTIFY sends Slack and SNS. A human reviews and merges, and a GitHub webhook teaches the trust ledger.</desc>
+<desc id="d">Sentry sends a signed webhook to a webhook that verifies it, then SNS, SQS and an EventBridge Pipe into Step Functions. INGEST, INVESTIGATE, a gate, then FIX, TEST and a pull request, or ESCALATE with a report-only pull request. NOTIFY sends Slack and SNS. A human reviews and merges, and a GitHub webhook teaches the trust ledger.</desc>
 <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/></marker></defs>
 <rect x="1" y="1" width="1198" height="788" rx="18" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
 <text x="40" y="52" text-anchor="start" font-size="28" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">How an alert becomes a reviewed pull request</text>
@@ -10,9 +10,9 @@
 <text x="140.0" y="176.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Sentry</text>
 <text x="140.0" y="198.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">error event</text>
 <rect x="285" y="132" width="170" height="92" rx="12" fill="#fff4e0" stroke="#e08a00" stroke-width="2.4"/>
-<text x="370.0" y="167.0" text-anchor="middle" font-size="18" font-weight="700" fill="#7a4a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">API Gateway</text>
-<text x="370.0" y="189.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">+ webhook Lambda</text>
-<text x="370.0" y="207.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">verifies signature</text>
+<text x="370.0" y="167.0" text-anchor="middle" font-size="18" font-weight="700" fill="#7a4a00" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">Sentry webhook</text>
+<text x="370.0" y="189.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">signed, HMAC-SHA256</text>
+<text x="370.0" y="207.0" text-anchor="middle" font-size="14" font-weight="400" fill="#374151" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">replay-protected</text>
 <path d="M225 178.0 L285 178.0" stroke="#4b5563" stroke-width="2.6" fill="none" marker-end="url(#ah)"/>
 <rect x="515" y="132" width="170" height="92" rx="12" fill="#f3f4f6" stroke="#6b7280" stroke-width="2.4"/>
 <text x="600.0" y="176.0" text-anchor="middle" font-size="18" font-weight="700" fill="#111827" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">SNS</text>
