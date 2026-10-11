@@ -7,6 +7,7 @@ skipped, never as passed.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,10 @@ DEFAULT_COMMANDS: dict[str, list[str]] = {
     "unit": [sys.executable, "-m", "pytest", "-q", "-x", "--no-header", "-p", "no:cacheprovider"],
     "lint": [sys.executable, "-m", "ruff", "check", "src"],
 }
+
+# Checks must not leave .pyc files or caches behind: they would dirty the working tree, and the next
+# `git checkout` (or `git add -A`) would trip over them.
+_CLEAN_ENV = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
 
 
 @dataclass(frozen=True)
@@ -78,7 +83,12 @@ def run_checks(
         failure = ""
         try:
             done = subprocess.run(
-                command, cwd=str(repo_path), capture_output=True, text=True, timeout=timeout
+                command,
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=_CLEAN_ENV,
             )
             if done.returncode != 0:
                 failure = (done.stdout + done.stderr)[-1500:]
@@ -100,7 +110,12 @@ def run_checks(
             continue
         try:
             result = subprocess.run(
-                command, cwd=str(repo_path), capture_output=True, text=True, timeout=timeout
+                command,
+                cwd=str(repo_path),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=_CLEAN_ENV,
             )
         except subprocess.TimeoutExpired:
             report.checks.append(CheckResult(name, "fail", f"timed out after {timeout}s"))
