@@ -12,7 +12,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - name: Install (Python 3.11, the book's pinned versions)
         run: make venv
@@ -38,7 +38,7 @@ jobs:
     # Separate, explicit integration job: Chapter 17 "Start Local".
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - run: make venv
       - run: make local-up
